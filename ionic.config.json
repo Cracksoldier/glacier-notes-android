@@ -1,0 +1,7 @@
+{
+  "name": "glacier-notes-android",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}
