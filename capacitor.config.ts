@@ -1,9 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
-  appName: 'glacier-notes-android',
-  webDir: 'www'
+  appId: 'com.glacier.notes',
+  appName: 'Glacier Notes',
+  webDir: 'www',
 };
 
 export default config;

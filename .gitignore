@@ -68,3 +68,17 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Android build outputs and local SDK configuration
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/local.properties
+/android/capacitor-cordova-android-plugins/build/
+
+# Release signing material and secrets — never commit
+*.jks
+*.keystore
+/android/keystore.properties
+.env
+.env.*

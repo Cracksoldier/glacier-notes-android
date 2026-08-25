@@ -1,15 +1,8 @@
-# This file is used by the build system to adjust CSS and JS output to support the specified browsers below.
-# For additional information regarding the format and rule options, please see:
-# https://github.com/browserslist/browserslist#queries
+# Glacier Notes ships only inside an Android WebView, so the build targets Chromium alone.
+# The floor is Angular 22's own baseline (Chrome 111) — anything lower makes the build
+# emit an "Unsupported browsers" warning. Android System WebView updates independently of
+# the OS, so this is compatible with minSdk 24.
+# See: https://angular.dev/reference/versions#browser-support
 
-# For the full list of supported browsers by the Angular framework, please see:
-# https://angular.dev/reference/versions#browser-support
-
-# You can see what browsers were selected by your queries by running:
-#   npx browserslist
-
-Chrome >=107
-Firefox >=106
-Edge >=107
-Safari >=16.1
-iOS >=16.1
+Chrome >= 111
+ChromeAndroid >= 111
