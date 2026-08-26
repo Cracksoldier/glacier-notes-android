@@ -1,2 +1,110 @@
-// For information on how to create your own theme, please refer to:
-// https://ionicframework.com/docs/theming/
+@use 'sass:color';
+@use 'sass:math';
+
+// Maps the Glacier tokens in glacier-theme.scss onto Ionic's theming variables.
+// Ionic derives shades/tints only for its own named palettes, so the companions
+// below are precomputed with Ionic's convention: shade = x0.88, tint = +10%
+// toward white.
+//
+// The --ion-color-step-* ramp is what most Ionic components read for
+// backgrounds, dividers and disabled states. Leaving it at Ionic's defaults is
+// what makes a "themed" app still look like stock Ionic, so it is derived here
+// from each theme's background/text pair.
+
+// color.mix returns fractional channels; round them so the emitted values are
+// hex rather than rgb(118.5, ...).
+@function step($bg, $text, $weight) {
+  $mixed: color.mix($text, $bg, $weight);
+  @return rgb(
+    math.round(color.channel($mixed, 'red', $space: rgb)),
+    math.round(color.channel($mixed, 'green', $space: rgb)),
+    math.round(color.channel($mixed, 'blue', $space: rgb))
+  );
+}
+
+@mixin color-steps($bg, $text) {
+  @for $i from 1 through 19 {
+    --ion-color-step-#{$i * 50}: #{step($bg, $text, $i * 5%)};
+  }
+}
+
+.theme-dark {
+  --ion-color-primary: #4cc9f0;
+  --ion-color-primary-rgb: 76, 201, 240;
+  --ion-color-primary-contrast: #0d1b2a;
+  --ion-color-primary-contrast-rgb: 13, 27, 42;
+  --ion-color-primary-shade: #43b1d3;
+  --ion-color-primary-tint: #5ecef2;
+
+  --ion-color-secondary: #63b3ed;
+  --ion-color-secondary-rgb: 99, 179, 237;
+  --ion-color-secondary-contrast: #0d1b2a;
+  --ion-color-secondary-contrast-rgb: 13, 27, 42;
+  --ion-color-secondary-shade: #579dd1;
+  --ion-color-secondary-tint: #73bbef;
+
+  --ion-color-danger: #c0392b;
+  --ion-color-danger-rgb: 192, 57, 43;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #a93226;
+  --ion-color-danger-tint: #c64d40;
+
+  --ion-background-color: #0d1b2a;
+  --ion-background-color-rgb: 13, 27, 42;
+  --ion-text-color: #e0e6ed;
+  --ion-text-color-rgb: 224, 230, 237;
+
+  --ion-toolbar-background: #1b263b;
+  --ion-toolbar-color: #e0e6ed;
+  --ion-item-background: #1b263b;
+  --ion-card-background: #1b263b;
+  --ion-border-color: #2c3e54;
+
+  // Matches --ion-color-primary; only the light theme needs a darker variant.
+  --glacier-accent-strong: #4cc9f0;
+
+  @include color-steps(#0d1b2a, #e0e6ed);
+}
+
+.theme-light {
+  --ion-color-primary: #0d8ecf;
+  --ion-color-primary-rgb: 13, 142, 207;
+  // Desktop pairs this accent with --color-bg (#f4f7fa), which measures 3.37:1;
+  // white reaches 3.63:1. Neither clears WCAG AA for small text, so text-bearing
+  // accent fills use --glacier-accent-strong. See docs/design-system.md.
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #0b7db6;
+  --ion-color-primary-tint: #2599d4;
+
+  --ion-color-secondary: #3aa8dd;
+  --ion-color-secondary-rgb: 58, 168, 221;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #3394c2;
+  --ion-color-secondary-tint: #4eb1e0;
+
+  --ion-color-danger: #c0392b;
+  --ion-color-danger-rgb: 192, 57, 43;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #a93226;
+  --ion-color-danger-tint: #c64d40;
+
+  --ion-background-color: #f4f7fa;
+  --ion-background-color-rgb: 244, 247, 250;
+  --ion-text-color: #1b263b;
+  --ion-text-color-rgb: 27, 38, 59;
+
+  --ion-toolbar-background: #ffffff;
+  --ion-toolbar-color: #1b263b;
+  --ion-item-background: #ffffff;
+  --ion-card-background: #ffffff;
+  --ion-border-color: #d5dee8;
+
+  // Reaches 4.54:1 against white, unlike the raw accent.
+  --glacier-accent-strong: #0b7db6;
+
+  @include color-steps(#f4f7fa, #1b263b);
+}

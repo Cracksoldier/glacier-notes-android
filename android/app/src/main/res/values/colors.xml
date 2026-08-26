@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The navy field of the desktop brand mark (build/icons/1024x1024.png). -->
+    <color name="glacier_navy">#041731</color>
+    <!-- The light theme's color-bg token (docs/desktop-audit.md §2). -->
+    <color name="glacier_window_background">#f4f7fa</color>
+</resources>

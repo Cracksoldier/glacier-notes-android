@@ -1,0 +1,64 @@
+// Glacier design tokens, transcribed verbatim from the desktop application's
+// src/styles/_tokens.scss. See docs/desktop-audit.md §2 for the source citation.
+//
+// Themes are body classes rather than media queries, matching desktop
+// (app.ts toggles .theme-dark / .theme-light on document.body). Dark is default.
+// Keep this file structured like the desktop original so upstream diffs apply cleanly.
+
+.theme-dark {
+  --color-bg: #0d1b2a;
+  --color-surface: #1b263b;
+  --color-surface-elevated: #243447;
+  --color-accent: #4cc9f0;
+  --color-accent-muted: #63b3ed;
+  --color-text: #e0e6ed;
+  --color-text-muted: #8899aa;
+  --color-border: #2c3e54;
+  --color-shadow: rgba(0, 0, 0, 0.4);
+  --color-danger: #c0392b;
+  --color-danger-hover: #d64534;
+  --color-danger-text: #e74c3c;
+
+  --note-red: #4d2a32;
+  --note-orange: #4f3a26;
+  --note-yellow: #4a4426;
+  --note-green: #28422f;
+  --note-teal: #1e4247;
+  --note-blue: #243c5c;
+  --note-purple: #3a2e52;
+  --note-pink: #4c2a41;
+}
+
+.theme-light {
+  --color-bg: #f4f7fa;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-accent: #0d8ecf;
+  --color-accent-muted: #3aa8dd;
+  --color-text: #1b263b;
+  --color-text-muted: #5a6b7d;
+  --color-border: #d5dee8;
+  --color-shadow: rgba(13, 27, 42, 0.12);
+  --color-danger: #c0392b;
+  --color-danger-hover: #d64534;
+  --color-danger-text: #c0392b;
+
+  --note-red: #f7d9d7;
+  --note-orange: #fbe7cf;
+  --note-yellow: #faf3c8;
+  --note-green: #d9ecd9;
+  --note-teal: #d2ecef;
+  --note-blue: #d6e4f7;
+  --note-purple: #e5dcf5;
+  --note-pink: #f6dcec;
+}
+
+// Shape and elevation, from the desktop's component SCSS (audit §2).
+:root {
+  --glacier-radius-card: 10px;
+  --glacier-radius-default: 8px;
+  --glacier-radius-control: 6px;
+  --glacier-radius-dialog: 12px;
+  --glacier-shadow-dialog: 0 12px 40px var(--color-shadow);
+  --glacier-shadow-card-hover: 0 4px 14px var(--color-shadow);
+}

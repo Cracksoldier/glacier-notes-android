@@ -1,0 +1,102 @@
+// Sidebar metrics transcribed from the desktop's sidebar SCSS (audit §2/§6):
+// 260px wide, 16px/10px padding, 9px/12px rows on an 8px radius.
+
+ion-split-pane {
+  --side-width: 260px;
+  --side-max-width: 260px;
+}
+
+ion-menu ion-content {
+  --background: var(--color-surface);
+}
+
+.drawer {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  // The status bar overlays the WebView, so the drawer insets itself.
+  padding: calc(16px + var(--ion-safe-area-top, 0px)) 10px calc(16px + var(--ion-safe-area-bottom, 0px));
+  gap: 4px;
+}
+
+.drawer__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 14px;
+}
+
+.drawer__brand-mark {
+  font-size: 20px;
+  color: var(--color-accent);
+}
+
+.drawer__brand-name {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.drawer__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.drawer__section-title {
+  margin: 14px 0 4px;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.drawer__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: var(--glacier-radius-default);
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: start;
+  text-decoration: none;
+  color: var(--color-text);
+  cursor: pointer;
+
+  fa-icon {
+    width: 16px;
+    color: var(--color-text-muted);
+  }
+
+  &:active {
+    background-color: var(--color-surface-elevated);
+  }
+}
+
+.drawer__item--active {
+  background-color: var(--color-surface-elevated);
+
+  fa-icon {
+    color: var(--color-accent);
+  }
+}
+
+.drawer__item--muted {
+  color: var(--color-text-muted);
+}
+
+.drawer__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}

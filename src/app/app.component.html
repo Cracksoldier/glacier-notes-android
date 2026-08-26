@@ -1,3 +1,55 @@
 <ion-app>
-  <ion-router-outlet></ion-router-outlet>
+  <ion-split-pane contentId="main-content" when="lg">
+    <ion-menu contentId="main-content" type="overlay">
+      <ion-content>
+        <div class="drawer">
+          <header class="drawer__brand">
+            <fa-icon class="drawer__brand-mark" [icon]="icons.brand" />
+            <span class="drawer__brand-name">Glacier Notes</span>
+          </header>
+
+          <nav class="drawer__nav">
+            @for (section of sections; track section.title) {
+              <p class="drawer__section-title">{{ section.title }}</p>
+              @for (entry of section.entries; track entry.path) {
+                <ion-menu-toggle [autoHide]="false">
+                  <a
+                    class="drawer__item"
+                    [routerLink]="entry.path"
+                    routerLinkActive="drawer__item--active"
+                  >
+                    <fa-icon [icon]="entry.icon" />
+                    <span>{{ entry.label }}</span>
+                  </a>
+                </ion-menu-toggle>
+              }
+              @if (section.createLabel) {
+                <button type="button" class="drawer__item drawer__item--muted" disabled>
+                  <fa-icon [icon]="icons.add" />
+                  <span>{{ section.createLabel }}</span>
+                </button>
+              }
+            }
+          </nav>
+
+          <div class="drawer__footer">
+            @for (entry of footerEntries; track entry.path) {
+              <ion-menu-toggle [autoHide]="false">
+                <a
+                  class="drawer__item"
+                  [routerLink]="entry.path"
+                  routerLinkActive="drawer__item--active"
+                >
+                  <fa-icon [icon]="entry.icon" />
+                  <span>{{ entry.label }}</span>
+                </a>
+              </ion-menu-toggle>
+            }
+          </div>
+        </div>
+      </ion-content>
+    </ion-menu>
+
+    <ion-router-outlet id="main-content" />
+  </ion-split-pane>
 </ion-app>

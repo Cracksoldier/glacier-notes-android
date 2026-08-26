@@ -16,18 +16,20 @@ Two documents in the repo root govern all work here and take precedence over ass
 
 ## Current repository state
 
-M00 and M01 are complete. The app identity, tooling, directory skeleton and docs are in place, but the UI is still the Ionic starter `home` page — no Glacier feature code exists yet. Work continues at M02.
+M00 through M02 are complete. The design system, app shell and branding are in place; every drawer destination routes to a placeholder page because no data layer exists yet. Work continues at M03.
 
 Starter defaults still awaiting a later milestone:
 
 | Item | Current | Required by |
 | --- | --- | --- |
-| `src/app/home/` | Ionic starter page | M02 replaces with the Glacier app shell |
-| `src/theme/variables.scss` | empty | M02 fills from desktop tokens |
 | `android/app/src/main/AndroidManifest.xml` | has `INTERNET`, `allowBackup="true"` | M15 removes/disables both |
-| Launcher icons / splash | Ionic starter artwork | M14 |
+| `src/app/features/*` | placeholder pages behind `app-empty-state` | M04 onwards, one per feature |
+| UI strings | English literals | M03 adds i18n |
+| Theme mode | in memory, defaults to dark | M03 persists it |
 
 Resolved by M01: app ID is `com.glacier.notes` in `capacitor.config.ts`, `android/app/build.gradle` and `strings.xml`; Biome formats (linter off) alongside angular-eslint; `format`, `format:check` and `typecheck` scripts exist; `.gitignore` covers keystores and Android build output.
+
+Resolved by M02: `docs/design-system.md` records the token layers, the light-accent contrast deviation, the Font Awesome CC BY 4.0 attribution obligation (surfaced in Settings at M11), the re-vectorized brand mark, and why the Android system bars are wired the way they are. **Read it before touching `src/theme/`, `src/global.scss` or `android/app/src/main/res/values*/`** — several of those values look arbitrary but are derived or load-bearing.
 
 ## Commands
 

@@ -1,13 +1,7 @@
-/*
- * App Global CSS
- * ----------------------------------------------------------------------------
- * Put style rules here that you want to apply globally. These styles are for
- * the entire app and not just one component. Additionally, this file can be
- * used as an entry point to import other CSS/Sass files to be included in the
- * output CSS.
- * For more information on global stylesheets, visit the documentation:
- * https://ionicframework.com/docs/layout/global-stylesheets
- */
+// Ionic's dark.system.css palette is deliberately absent: it keys off
+// prefers-color-scheme, which would fight the .theme-dark / .theme-light body
+// classes that ThemeService owns.
+@use "./theme/glacier-theme.scss";
 
 /* Core CSS required for Ionic components to work properly */
 @import "@ionic/angular/css/core.css";
@@ -25,13 +19,35 @@
 @import "@ionic/angular/css/text-transformation.css";
 @import "@ionic/angular/css/flex-utils.css";
 
-/**
- * Ionic Dark Mode
- * -----------------------------------------------------
- * For more info, please see:
- * https://ionicframework.com/docs/theming/dark-mode
- */
+// Desktop base typography (audit §2): 14px / 1.5, system stack. On Android the
+// stack resolves to on-device Roboto, so no font is bundled or fetched.
+:root {
+  --glacier-font-family:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ion-font-family: var(--glacier-font-family);
+}
 
-/* @import "@ionic/angular/css/palettes/dark.always.css"; */
-/* @import "@ionic/angular/css/palettes/dark.class.css"; */
-@import '@ionic/angular/css/palettes/dark.system.css';
+body {
+  font-family: var(--glacier-font-family);
+  font-size: 14px;
+  line-height: 1.5;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+// Capacitor hands the window insets to CSS only on WebView >= 140; below that it
+// pads the WebView natively and reports zero here. Ionic's MD toolbar inherits
+// only the left/right insets, so without these the edge-to-edge path would put
+// the first toolbar under the status bar and the FAB under the gesture bar.
+ion-header ion-toolbar:first-of-type {
+  padding-top: var(--ion-safe-area-top, 0px);
+}
+
+ion-content {
+  --padding-bottom: var(--ion-safe-area-bottom, 0px);
+}
+
+ion-fab[vertical="bottom"] {
+  margin-bottom: var(--ion-safe-area-bottom, 0px);
+}
