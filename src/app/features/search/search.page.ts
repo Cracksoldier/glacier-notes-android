@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
+import { I18nService } from '../../core/localization/i18n.service';
 import { PlaceholderPageComponent } from '../../shared/components/placeholder-page.component';
 import { faMagnifyingGlass } from '../../shared/utilities/glacier-icons';
 
@@ -9,12 +10,13 @@ import { faMagnifyingGlass } from '../../shared/utilities/glacier-icons';
   imports: [PlaceholderPageComponent],
   template: `
     <app-placeholder-page
-      heading="Search"
+      [heading]="i18n.t('sidebar.search')"
       [icon]="icon"
-      message="Full-text search over titles, bodies and checklists."
+      [message]="i18n.t('placeholder.search')"
     />
   `,
 })
 export class SearchPage {
+  readonly i18n = inject(I18nService);
   readonly icon = faMagnifyingGlass;
 }

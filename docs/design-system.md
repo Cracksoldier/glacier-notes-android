@@ -20,7 +20,13 @@ two classes on `document.body`. Ionic's `dark.system.css` palette is deliberatel
 `ThemeService` (`src/app/core/preferences/theme.service.ts`) owns those classes.
 Its `mode` is `dark | light | system`, defaulting to `dark` for desktop parity;
 `system` resolves through a `prefers-color-scheme` listener down to the same two
-classes. Persistence arrives in M03 behind the same API.
+classes.
+
+Since M03 the *value* of `mode` belongs to `SettingsStore`, which persists it —
+`ThemeService.mode` is a read-only view of `SettingsStore.themeMode` and the
+setters delegate. What the service still owns is everything that touches the
+platform: the body classes, the media-query listener and the status bar below.
+See `docs/settings-and-localization.md`.
 
 ### Derived Ionic values
 

@@ -1,9 +1,20 @@
-import { DOCUMENT, DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
+import {
+  DOCUMENT,
+  DestroyRef,
+  Injectable,
+  type Signal,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 
-export type ThemeMode = 'dark' | 'light' | 'system';
-export type ResolvedTheme = 'dark' | 'light';
+import type { ResolvedTheme, ThemeMode } from './settings.model';
+import { SettingsStore } from './settings.store';
+
+export type { ResolvedTheme, ThemeMode };
 
 const THEME_CLASSES: Record<ResolvedTheme, string> = {
   dark: 'theme-dark',
@@ -16,16 +27,18 @@ const THEME_CLASSES: Record<ResolvedTheme, string> = {
 const WEBVIEW_CSS_INSETS_VERSION = 140;
 
 /**
- * Owns the .theme-dark / .theme-light body class, mirroring the desktop app's
- * effect() in app.ts. Persistence arrives in M03 behind this same API.
+ * Owns the .theme-dark / .theme-light body class and the status bar, mirroring
+ * the desktop app's effect() in app.ts. The chosen mode itself belongs to
+ * SettingsStore, which persists it.
  */
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly settings = inject(SettingsStore);
   private readonly systemPrefersDark = signal(false);
 
-  readonly mode = signal<ThemeMode>('dark');
+  readonly mode: Signal<ThemeMode> = this.settings.themeMode;
 
   readonly resolved = computed<ResolvedTheme>(() => {
     const mode = this.mode();
@@ -42,12 +55,12 @@ export class ThemeService {
   }
 
   setMode(mode: ThemeMode): void {
-    this.mode.set(mode);
+    this.settings.setThemeMode(mode);
   }
 
   /** Flips between the two concrete themes; 'system' resolves first. */
   toggle(): void {
-    this.mode.set(this.resolved() === 'dark' ? 'light' : 'dark');
+    this.settings.setThemeMode(this.resolved() === 'dark' ? 'light' : 'dark');
   }
 
   private watchSystemPreference(): void {

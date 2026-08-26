@@ -1,11 +1,20 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
+import { MemoryPreferencesAdapter } from '../../core/preferences/memory-preferences.adapter';
+import { PREFERENCES_ADAPTER } from '../../core/preferences/preferences-adapter';
 import { ArchivePage } from '../../features/archive/archive.page';
 
 describe('PlaceholderPageComponent', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [ArchivePage],
+      providers: [{ provide: PREFERENCES_ADAPTER, useValue: new MemoryPreferencesAdapter() }],
+    });
+  });
+
   it('renders the wrapping page heading, menu button and empty state', async () => {
-    await TestBed.configureTestingModule({ imports: [ArchivePage] }).compileComponents();
+    await TestBed.compileComponents();
 
     const fixture = TestBed.createComponent(ArchivePage);
     fixture.detectChanges();

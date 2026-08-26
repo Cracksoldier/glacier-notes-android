@@ -16,7 +16,7 @@ Two documents in the repo root govern all work here and take precedence over ass
 
 ## Current repository state
 
-M00 through M02 are complete. The design system, app shell and branding are in place; every drawer destination routes to a placeholder page because no data layer exists yet. Work continues at M03.
+M00 through M03 are complete. The design system, app shell, branding, English/German localization and persisted settings are in place; every drawer destination still routes to a placeholder page because no data layer exists yet. Work continues at M04.
 
 Starter defaults still awaiting a later milestone:
 
@@ -24,12 +24,13 @@ Starter defaults still awaiting a later milestone:
 | --- | --- | --- |
 | `android/app/src/main/AndroidManifest.xml` | has `INTERNET`, `allowBackup="true"` | M15 removes/disables both |
 | `src/app/features/*` | placeholder pages behind `app-empty-state` | M04 onwards, one per feature |
-| UI strings | English literals | M03 adds i18n |
-| Theme mode | in memory, defaults to dark | M03 persists it |
+| `noteLayout` / `sortOrder` settings | persisted models, no UI and no reader | M06 and M11 |
 
 Resolved by M01: app ID is `com.glacier.notes` in `capacitor.config.ts`, `android/app/build.gradle` and `strings.xml`; Biome formats (linter off) alongside angular-eslint; `format`, `format:check` and `typecheck` scripts exist; `.gitignore` covers keystores and Android build output.
 
 Resolved by M02: `docs/design-system.md` records the token layers, the light-accent contrast deviation, the Font Awesome CC BY 4.0 attribution obligation (surfaced in Settings at M11), the re-vectorized brand mark, and why the Android system bars are wired the way they are. **Read it before touching `src/theme/`, `src/global.scss` or `android/app/src/main/res/values*/`** — several of those values look arbitrary but are derived or load-bearing.
+
+Resolved by M03: `docs/settings-and-localization.md` records the ported i18n service, which translation keys come from the desktop versus which were authored here, the persisted settings shape and its desktop provenance, and why settings are never part of a `.glacier.json` export. **Read it before adding UI strings or touching `src/app/core/preferences/`.** New user-facing text goes in `src/app/core/localization/en.ts` and `de.ts`, never as a template literal.
 
 ## Commands
 
@@ -46,7 +47,7 @@ npm run typecheck          # tsc --noEmit over tsconfig.app.json and tsconfig.sp
 Run a single test file or a single test by name:
 
 ```bash
-npx ng test -c ci --include src/app/home/home.page.spec.ts
+npx ng test -c ci --include src/app/core/preferences/settings.store.spec.ts
 npx ng test -c ci --filter '^AppComponent'
 ```
 
@@ -67,7 +68,7 @@ cd android && ./gradlew assembleDebug
 
 - **Browser targets** — `.browserslistrc` is Chromium-only (Chrome/ChromeAndroid ≥ 107), since the only shipping runtime is the Android WebView.
 
-The directory skeleton under `src/app/` exists but is empty: `core/` (database, filesystem, preferences, repositories, import-export, markdown, localization, native, models), `features/` (notes, notebooks, labels, archive, trash, search, settings, import-export), and `shared/`. UI code must reach persistence only through repository interfaces in `core/repositories` — never via direct SQLite plugin calls.
+Under `src/app/core/`, only `localization/` and `preferences/` hold code so far; `database/`, `filesystem/`, `repositories/`, `import-export/`, `markdown/`, `native/` and `models/` are still empty placeholders. UI code must reach persistence only through repository interfaces in `core/repositories` — never via direct SQLite plugin calls.
 
 Data flows in two separated layers: domain models (desktop-compatible, UUID-keyed) vs. SQLite row models. Notes/notebooks/labels/checklists/image *metadata* live in SQLite; image *bytes* live in app-private files and are referenced from Markdown as `glacier-img://<imageId>`.
 

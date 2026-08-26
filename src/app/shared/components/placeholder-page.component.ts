@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import { I18nService } from '../../core/localization/i18n.service';
 import {
   IonButtons,
   IonContent,
@@ -29,7 +30,7 @@ import { EmptyStateComponent } from './empty-state.component';
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-menu-button aria-label="Open navigation menu" />
+          <ion-menu-button [attr.aria-label]="i18n.t('a11y.openMenu')" />
         </ion-buttons>
         <ion-title>{{ heading() }}</ion-title>
       </ion-toolbar>
@@ -45,6 +46,8 @@ import { EmptyStateComponent } from './empty-state.component';
   styles: ':host { display: contents; }',
 })
 export class PlaceholderPageComponent {
+  readonly i18n = inject(I18nService);
+
   readonly heading = input.required<string>();
   readonly icon = input.required<IconDefinition>();
   readonly message = input('');

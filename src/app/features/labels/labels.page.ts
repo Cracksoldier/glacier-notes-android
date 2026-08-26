@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
+import { I18nService } from '../../core/localization/i18n.service';
 import { PlaceholderPageComponent } from '../../shared/components/placeholder-page.component';
 import { faTag } from '../../shared/utilities/glacier-icons';
 
@@ -9,12 +10,13 @@ import { faTag } from '../../shared/utilities/glacier-icons';
   imports: [PlaceholderPageComponent],
   template: `
     <app-placeholder-page
-      heading="Labels"
+      [heading]="i18n.t('sidebar.labels')"
       [icon]="icon"
-      message="Labels let you tag notes across notebooks."
+      [message]="i18n.t('placeholder.labels')"
     />
   `,
 })
 export class LabelsPage {
+  readonly i18n = inject(I18nService);
   readonly icon = faTag;
 }

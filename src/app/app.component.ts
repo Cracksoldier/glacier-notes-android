@@ -11,6 +11,8 @@ import {
   IonSplitPane,
 } from '@ionic/angular';
 
+import { I18nService } from './core/localization/i18n.service';
+import type { TranslationKey } from './core/localization/en';
 import { ThemeService } from './core/preferences/theme.service';
 import {
   faBook,
@@ -25,15 +27,15 @@ import {
 } from './shared/utilities/glacier-icons';
 
 interface DrawerEntry {
-  readonly label: string;
+  readonly label: TranslationKey;
   readonly path: string;
   readonly icon: IconDefinition;
 }
 
 interface DrawerSection {
-  readonly title: string;
+  readonly title: TranslationKey;
   readonly entries: readonly DrawerEntry[];
-  readonly createLabel?: string;
+  readonly createLabel?: TranslationKey;
 }
 
 @Component({
@@ -57,6 +59,8 @@ export class AppComponent {
   // Instantiated for its side effect: the theme service owns the body theme class.
   private readonly theme = inject(ThemeService);
 
+  readonly i18n = inject(I18nService);
+
   readonly icons = { brand: faSnowflake, add: faPlus };
 
   // Mirrors the desktop sidebar's order (docs/desktop-audit.md §6). Notebook and
@@ -64,25 +68,25 @@ export class AppComponent {
   // the create rows render.
   readonly sections: readonly DrawerSection[] = [
     {
-      title: 'Notes',
-      entries: [{ label: 'All Notes', path: '/notes', icon: faFileLines }],
+      title: 'sidebar.notes',
+      entries: [{ label: 'sidebar.allNotes', path: '/notes', icon: faFileLines }],
     },
     {
-      title: 'Notebooks',
-      entries: [{ label: 'All Notebooks', path: '/notebooks', icon: faBook }],
-      createLabel: 'New notebook',
+      title: 'sidebar.notebooks',
+      entries: [{ label: 'sidebar.allNotebooks', path: '/notebooks', icon: faBook }],
+      createLabel: 'sidebar.newNotebook',
     },
     {
-      title: 'Labels',
-      entries: [{ label: 'All Labels', path: '/labels', icon: faTag }],
-      createLabel: 'New label',
+      title: 'sidebar.labels',
+      entries: [{ label: 'sidebar.allLabels', path: '/labels', icon: faTag }],
+      createLabel: 'sidebar.newLabel',
     },
   ];
 
   readonly footerEntries: readonly DrawerEntry[] = [
-    { label: 'Archive', path: '/archive', icon: faBoxArchive },
-    { label: 'Trash', path: '/trash', icon: faTrashCan },
-    { label: 'Import / Export', path: '/import-export', icon: faFileExport },
-    { label: 'Settings', path: '/settings', icon: faGear },
+    { label: 'sidebar.archive', path: '/archive', icon: faBoxArchive },
+    { label: 'sidebar.trash', path: '/trash', icon: faTrashCan },
+    { label: 'sidebar.importExport', path: '/import-export', icon: faFileExport },
+    { label: 'sidebar.settings', path: '/settings', icon: faGear },
   ];
 }

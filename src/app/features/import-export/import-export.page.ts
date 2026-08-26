@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
+import { I18nService } from '../../core/localization/i18n.service';
 import { PlaceholderPageComponent } from '../../shared/components/placeholder-page.component';
 import { faFileExport } from '../../shared/utilities/glacier-icons';
 
@@ -9,12 +10,13 @@ import { faFileExport } from '../../shared/utilities/glacier-icons';
   imports: [PlaceholderPageComponent],
   template: `
     <app-placeholder-page
-      heading="Import / Export"
+      [heading]="i18n.t('sidebar.importExport')"
       [icon]="icon"
-      message="Exchange .glacier.json archives with Glacier Notes on the desktop."
+      [message]="i18n.t('placeholder.importExport')"
     />
   `,
 })
 export class ImportExportPage {
+  readonly i18n = inject(I18nService);
   readonly icon = faFileExport;
 }

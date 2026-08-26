@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import {
@@ -13,6 +13,7 @@ import {
   IonToolbar,
 } from '@ionic/angular';
 
+import { I18nService } from '../../core/localization/i18n.service';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 import { faFileLines, faMagnifyingGlass, faPlus } from '../../shared/utilities/glacier-icons';
 
@@ -37,11 +38,11 @@ import { faFileLines, faMagnifyingGlass, faPlus } from '../../shared/utilities/g
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-menu-button aria-label="Open navigation menu" />
+          <ion-menu-button [attr.aria-label]="i18n.t('a11y.openMenu')" />
         </ion-buttons>
-        <ion-title>Notes</ion-title>
+        <ion-title>{{ i18n.t('sidebar.notes') }}</ion-title>
         <ion-buttons slot="end">
-          <ion-button routerLink="/search" aria-label="Search notes">
+          <ion-button routerLink="/search" [attr.aria-label]="i18n.t('a11y.searchNotes')">
             <fa-icon [icon]="searchIcon" />
           </ion-button>
         </ion-buttons>
@@ -51,12 +52,12 @@ import { faFileLines, faMagnifyingGlass, faPlus } from '../../shared/utilities/g
     <ion-content>
       <app-empty-state
         [icon]="emptyIcon"
-        title="No notes yet"
-        message="Notes appear here once the note store is in place."
+        [title]="i18n.t('grid.noNotes')"
+        [message]="i18n.t('grid.noNotesHint')"
       />
 
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-        <ion-fab-button aria-label="New note" disabled="true">
+        <ion-fab-button [attr.aria-label]="i18n.t('a11y.newNote')" disabled="true">
           <fa-icon [icon]="addIcon" />
         </ion-fab-button>
       </ion-fab>
@@ -64,6 +65,7 @@ import { faFileLines, faMagnifyingGlass, faPlus } from '../../shared/utilities/g
   `,
 })
 export class NotesPage {
+  readonly i18n = inject(I18nService);
   readonly emptyIcon = faFileLines;
   readonly searchIcon = faMagnifyingGlass;
   readonly addIcon = faPlus;

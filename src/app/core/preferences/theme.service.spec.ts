@@ -2,9 +2,21 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { resetMediaQueries, setMediaQueryMatches } from '../../../test-setup';
+import { MemoryPreferencesAdapter } from './memory-preferences.adapter';
+import { PREFERENCES_ADAPTER } from './preferences-adapter';
+import { SETTINGS_STORAGE_KEY, SettingsStore } from './settings.store';
 import { ThemeService } from './theme.service';
 
 const PREFERS_DARK = '(prefers-color-scheme: dark)';
+
+function provideStoredSettings(stored?: Record<string, unknown>): void {
+  const seed: Record<string, string> = stored
+    ? { [SETTINGS_STORAGE_KEY]: JSON.stringify(stored) }
+    : {};
+  TestBed.configureTestingModule({
+    providers: [{ provide: PREFERENCES_ADAPTER, useValue: new MemoryPreferencesAdapter(seed) }],
+  });
+}
 
 function themeClasses(): string[] {
   return [...document.body.classList].filter((name) => name.startsWith('theme-'));
@@ -14,7 +26,7 @@ describe('ThemeService', () => {
   beforeEach(() => {
     resetMediaQueries();
     document.body.className = '';
-    TestBed.configureTestingModule({});
+    provideStoredSettings();
   });
 
   afterEach(() => {
@@ -82,5 +94,16 @@ describe('ThemeService', () => {
     TestBed.tick();
 
     expect(service.resolved()).toBe('light');
+  });
+
+  it('picks up the stored mode, so the choice survives a restart', async () => {
+    TestBed.resetTestingModule();
+    provideStoredSettings({ themeMode: 'light' });
+    await TestBed.inject(SettingsStore).init();
+    const service = TestBed.inject(ThemeService);
+    TestBed.tick();
+
+    expect(service.mode()).toBe('light');
+    expect(themeClasses()).toEqual(['theme-light']);
   });
 });

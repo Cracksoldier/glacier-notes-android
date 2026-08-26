@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
+import { I18nService } from '../../core/localization/i18n.service';
 import { PlaceholderPageComponent } from '../../shared/components/placeholder-page.component';
 import { faTrashCan } from '../../shared/utilities/glacier-icons';
 
@@ -9,12 +10,13 @@ import { faTrashCan } from '../../shared/utilities/glacier-icons';
   imports: [PlaceholderPageComponent],
   template: `
     <app-placeholder-page
-      heading="Trash"
+      [heading]="i18n.t('sidebar.trash')"
       [icon]="icon"
-      message="Deleted notes can be restored from here."
+      [message]="i18n.t('grid.trashEmptyHint')"
     />
   `,
 })
 export class TrashPage {
+  readonly i18n = inject(I18nService);
   readonly icon = faTrashCan;
 }

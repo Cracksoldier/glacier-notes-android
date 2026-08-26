@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
+import { I18nService } from '../../core/localization/i18n.service';
 import { PlaceholderPageComponent } from '../../shared/components/placeholder-page.component';
 import { faBoxArchive } from '../../shared/utilities/glacier-icons';
 
@@ -9,12 +10,13 @@ import { faBoxArchive } from '../../shared/utilities/glacier-icons';
   imports: [PlaceholderPageComponent],
   template: `
     <app-placeholder-page
-      heading="Archive"
+      [heading]="i18n.t('sidebar.archive')"
       [icon]="icon"
-      message="Archived notes stay out of the way but are never deleted."
+      [message]="i18n.t('grid.nothingArchivedHint')"
     />
   `,
 })
 export class ArchivePage {
+  readonly i18n = inject(I18nService);
   readonly icon = faBoxArchive;
 }

@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { AppComponent } from './app.component';
 import { routes } from './app.routes';
+import { MemoryPreferencesAdapter } from './core/preferences/memory-preferences.adapter';
+import { PREFERENCES_ADAPTER } from './core/preferences/preferences-adapter';
+import { SettingsStore } from './core/preferences/settings.store';
 
 describe('AppComponent', () => {
   let fixture: ComponentFixture<AppComponent>;
@@ -12,7 +15,10 @@ describe('AppComponent', () => {
     document.body.className = '';
     await TestBed.configureTestingModule({
       imports: [AppComponent],
-      providers: [provideRouter(routes)],
+      providers: [
+        provideRouter(routes),
+        { provide: PREFERENCES_ADAPTER, useValue: new MemoryPreferencesAdapter() },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AppComponent);
@@ -60,5 +66,32 @@ describe('AppComponent', () => {
 
   it('applies the default theme on startup', () => {
     expect(document.body.classList.contains('theme-dark')).toBe(true);
+  });
+
+  it('resolves every drawer label, never leaking a raw translation key', () => {
+    const host: HTMLElement = fixture.nativeElement;
+    const labels = [...host.querySelectorAll('.drawer__item span, .drawer__section-title')].map(
+      (el) => el.textContent?.trim() ?? '',
+    );
+
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels.filter((text) => text.includes('.'))).toEqual([]);
+  });
+
+  it('re-renders the drawer in German when the language changes', () => {
+    const host: HTMLElement = fixture.nativeElement;
+
+    TestBed.inject(SettingsStore).setLanguage('de');
+    fixture.detectChanges();
+
+    const headings = [...host.querySelectorAll('.drawer__section-title')].map((el) =>
+      el.textContent?.trim(),
+    );
+    const footer = [...host.querySelectorAll('.drawer__footer .drawer__item span')].map((el) =>
+      el.textContent?.trim(),
+    );
+
+    expect(headings).toEqual(['Notizen', 'Notizbücher', 'Labels']);
+    expect(footer).toEqual(['Archiv', 'Papierkorb', 'Import / Export', 'Einstellungen']);
   });
 });
