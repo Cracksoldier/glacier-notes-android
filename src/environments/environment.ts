@@ -1,16 +1,24 @@
-// This file can be replaced during build by using the `fileReplacements` array.
-// `ng build` replaces `environment.ts` with `environment.prod.ts`.
-// The list of file replacements can be found in `angular.json`.
+// This file is replaced during a production build by `environment.prod.ts`
+// (see the `fileReplacements` array in `angular.json`).
+//
+// That replacement is what keeps sql.js out of the APK: nothing reachable from
+// `environment.prod.ts` references `sqljs.adapter.ts`, so it is never bundled.
+
+import { Capacitor } from '@capacitor/core';
+
+import { CapacitorSqliteAdapter } from '../app/core/database/capacitor-sqlite.adapter';
+import type { DatabaseAdapter } from '../app/core/database/database-adapter';
+import { SqlJsAdapter } from '../app/core/database/sqljs.adapter';
 
 export const environment = {
   production: false,
 };
 
-/*
- * For easier debugging in development mode, you can import the following file
- * to ignore zone related error stack frames such as `zone.run`, `zoneDelegate.invokeTask`.
- *
- * This import should be commented out in production mode because it will have a negative impact
- * on performance if an error is thrown.
+/**
+ * On a device — including a live-reload session against the emulator — this is
+ * the real plugin, so development exercises the production code path. Only a
+ * plain browser gets the in-memory engine.
  */
-// import 'zone.js/plugins/zone-error';  // Included with Angular CLI.
+export function createDatabaseAdapter(): DatabaseAdapter {
+  return Capacitor.isNativePlatform() ? new CapacitorSqliteAdapter() : new SqlJsAdapter();
+}

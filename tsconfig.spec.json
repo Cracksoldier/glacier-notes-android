@@ -3,7 +3,15 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
-    "types": ["vitest/globals"]
+    "types": ["vitest/globals", "node"]
   },
-  "include": ["src/**/*.spec.ts", "src/**/*.d.ts", "src/test-setup.ts"]
+  "include": [
+    "src/**/*.spec.ts",
+    "src/**/*.d.ts",
+    "src/test-setup.ts",
+    // `tsconfig.app.json` builds from `src/main.ts`, which imports the *dev*
+    // environment — the production one is only ever pulled in by the build's
+    // `fileReplacements`, so nothing else would typecheck it.
+    "src/environments/environment.prod.ts"
+  ]
 }

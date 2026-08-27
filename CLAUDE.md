@@ -16,14 +16,14 @@ Two documents in the repo root govern all work here and take precedence over ass
 
 ## Current repository state
 
-M00 through M03 are complete. The design system, app shell, branding, English/German localization and persisted settings are in place; every drawer destination still routes to a placeholder page because no data layer exists yet. Work continues at M04.
+M00 through M04 are complete. The design system, app shell, branding, English/German localization, persisted settings, the domain models and the SQLite layer (schema, migrations, transactions) are in place; every drawer destination still routes to a placeholder page because nothing reads or writes notes yet. Work continues at M05, which builds repositories on top of `core/database`.
 
 Starter defaults still awaiting a later milestone:
 
 | Item | Current | Required by |
 | --- | --- | --- |
 | `android/app/src/main/AndroidManifest.xml` | has `INTERNET`, `allowBackup="true"` | M15 removes/disables both |
-| `src/app/features/*` | placeholder pages behind `app-empty-state` | M04 onwards, one per feature |
+| `src/app/features/*` | placeholder pages behind `app-empty-state` | M06 onwards, one per feature |
 | `noteLayout` / `sortOrder` settings | persisted models, no UI and no reader | M06 and M11 |
 
 Resolved by M01: app ID is `com.glacier.notes` in `capacitor.config.ts`, `android/app/build.gradle` and `strings.xml`; Biome formats (linter off) alongside angular-eslint; `format`, `format:check` and `typecheck` scripts exist; `.gitignore` covers keystores and Android build output.
@@ -31,6 +31,8 @@ Resolved by M01: app ID is `com.glacier.notes` in `capacitor.config.ts`, `androi
 Resolved by M02: `docs/design-system.md` records the token layers, the light-accent contrast deviation, the Font Awesome CC BY 4.0 attribution obligation (surfaced in Settings at M11), the re-vectorized brand mark, and why the Android system bars are wired the way they are. **Read it before touching `src/theme/`, `src/global.scss` or `android/app/src/main/res/values*/`** — several of those values look arbitrary but are derived or load-bearing.
 
 Resolved by M03: `docs/settings-and-localization.md` records the ported i18n service, which translation keys come from the desktop versus which were authored here, the persisted settings shape and its desktop provenance, and why settings are never part of a `.glacier.json` export. **Read it before adding UI strings or touching `src/app/core/preferences/`.** New user-facing text goes in `src/app/core/localization/en.ts` and `de.ts`, never as a template literal.
+
+Resolved by M04: `docs/database.md` records the v1 schema, the justification for every `ON DELETE`, the two column names the Capacitor plugin makes unusable, the additive-only migration contract, and the three-backend engine split. **Read it before touching `src/app/core/database/` or writing a migration** — the schema is the app's own design rather than a transcription, so the reasoning is not recoverable from the SQL. Domain models live in `src/app/core/models/` and follow `docs/desktop-audit.md` §4; optional fields are absent keys, never `null`.
 
 ## Commands
 
@@ -68,7 +70,7 @@ cd android && ./gradlew assembleDebug
 
 - **Browser targets** — `.browserslistrc` is Chromium-only (Chrome/ChromeAndroid ≥ 107), since the only shipping runtime is the Android WebView.
 
-Under `src/app/core/`, only `localization/` and `preferences/` hold code so far; `database/`, `filesystem/`, `repositories/`, `import-export/`, `markdown/`, `native/` and `models/` are still empty placeholders. UI code must reach persistence only through repository interfaces in `core/repositories` — never via direct SQLite plugin calls.
+Under `src/app/core/`, `localization/`, `preferences/`, `models/` and `database/` hold code; `filesystem/`, `repositories/`, `import-export/`, `markdown/` and `native/` are still empty placeholders. UI code must reach persistence only through repository interfaces in `core/repositories` — never via direct SQLite plugin calls, and never by injecting `DATABASE_ADAPTER` outside `core/database` and `core/repositories`.
 
 Data flows in two separated layers: domain models (desktop-compatible, UUID-keyed) vs. SQLite row models. Notes/notebooks/labels/checklists/image *metadata* live in SQLite; image *bytes* live in app-private files and are referenced from Markdown as `glacier-img://<imageId>`.
 
