@@ -103,9 +103,21 @@ Seven, all listed in `001-initial-schema.ts` and inventoried exactly by
 Three deserve a note. `idx_notes_notebook` and `idx_notes_active` are
 **partial** — `WHERE deleted_at IS NULL` — because every list view in the app
 excludes trash, so trashed rows are dead weight in those indexes. Both carry
-`pinned DESC, updated_at DESC`, which is the desktop's sort order, so the index
-satisfies the ordering rather than just the filter. `idx_notes_trashed` is the
-mirror image (`WHERE deleted_at IS NOT NULL`) for the trash view alone.
+`pinned DESC, updated_at DESC`, so the index satisfies the ordering rather than
+just the filter.
+
+That is the desktop's order, though not the shape of any single expression in
+the desktop's code: `note-repo.ts:55` sorts by `updatedAt` alone, and the grid
+then splits the result into a pinned group above the rest (`note-grid.ts:52-53`)
+in *every* view. Concatenating those two groups is the same sequence
+`pinned DESC, updated_at DESC` produces, which is why one index can serve both.
+`idx_notes_trashed` is the mirror image (`WHERE deleted_at IS NOT NULL`) for the
+trash view alone; M05 orders that view by `deleted_at` rather than `updated_at`,
+and `docs/repositories.md` records why.
+
+One thing these indexes do **not** carry is the `id` tiebreaker M05's read path
+requires. Appending `, id` to `idx_notes_active` and `idx_notes_notebook` in a
+migration 002 is M11's call, once there is a query plan worth measuring.
 
 ### Seeding
 
@@ -201,6 +213,14 @@ one.
 `src/main.ts`, after `SettingsStore.init()` so the theme and language are
 already in place.
 
+**Initializers overlap.** Angular *invokes* them in registration order but does
+not await one before starting the next — it collects the promises and awaits
+them together. So "after" above means "started after", not "runs once settings
+are loaded", and no initializer may assume the database is open just because it
+was registered later. Anything that needs an open database must chain off
+`init()` itself, or wait on the `status` signal below. This is not hypothetical:
+M05's device probe was registered third and still hit `Database is not open`.
+
 It **never rejects**. An app initializer that rejects aborts bootstrap and
 leaves a blank screen, which is a strictly worse outcome than a running app
 that can explain itself. Instead it records a `status` signal
@@ -210,9 +230,10 @@ recreates the database file.
 
 ## Obligations handed to later milestones
 
-- **M05** — `UNIQUE (note_id, sort_order)` on `checklist_items` and
-  `note_images` blocks naive in-place reordering. Repositories must
-  delete-all-then-reinsert inside a transaction, or defer the constraint.
+- **M05** — *discharged.* `UNIQUE (note_id, sort_order)` on `checklist_items`
+  and `note_images` blocked naive in-place reordering, so `note-writes.ts`
+  reconciles both junctions by delete-all-then-reinsert inside the caller's
+  transaction. See `docs/repositories.md`.
 - **M10** — the other half of `isImageReferenced`: an image is referenced if it
   appears in `note_images` **or** as `glacier-img://<id>` in any note's
   Markdown. The `RESTRICT` above only covers the first.
