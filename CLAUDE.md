@@ -16,15 +16,16 @@ Two documents in the repo root govern all work here and take precedence over ass
 
 ## Current repository state
 
-M00 through M05 are complete. The design system, app shell, branding, English/German localization, persisted settings, the domain models, the SQLite layer (schema, migrations, transactions) and the repositories on top of it are in place; every drawer destination still routes to a placeholder page because no UI calls a repository yet. Work continues at M06, which builds the note list and editor.
+M00 through M06 are complete. The design system, app shell, branding, English/German localization, persisted settings, the domain models, the SQLite layer (schema, migrations, transactions), the repositories on top of it, and the note list and Markdown editor are in place. Notes can be created, edited and rendered end to end; every other drawer destination still routes to a placeholder page. Work continues at M07, which adds notebooks.
 
 Starter defaults still awaiting a later milestone:
 
 | Item | Current | Required by |
 | --- | --- | --- |
 | `android/app/src/main/AndroidManifest.xml` | has `INTERNET`, `allowBackup="true"` | M15 removes/disables both |
-| `src/app/features/*` | placeholder pages behind `app-empty-state` | M06 onwards, one per feature |
-| `noteLayout` / `sortOrder` settings | persisted models, no UI and no reader | M06 and M11 |
+| `src/app/features/*` | notes are built; notebooks, labels, archive, trash and import/export are still `app-empty-state` | M07 onwards, one per feature |
+| `sortOrder` setting | persisted model, no UI and no reader | M11 |
+| Note cards | title and preview only — no colours, labels, pin badge or actions | M08 |
 
 Resolved by M01: app ID is `com.glacier.notes` in `capacitor.config.ts`, `android/app/build.gradle` and `strings.xml`; Biome formats (linter off) alongside angular-eslint; `format`, `format:check` and `typecheck` scripts exist; `.gitignore` covers keystores and Android build output.
 
@@ -35,6 +36,10 @@ Resolved by M03: `docs/settings-and-localization.md` records the ported i18n ser
 Resolved by M04: `docs/database.md` records the v1 schema, the justification for every `ON DELETE`, the two column names the Capacitor plugin makes unusable, the additive-only migration contract, and the three-backend engine split. **Read it before touching `src/app/core/database/` or writing a migration** — the schema is the app's own design rather than a transcription, so the reasoning is not recoverable from the SQL. Domain models live in `src/app/core/models/` and follow `docs/desktop-audit.md` §4; optional fields are absent keys, never `null`.
 
 Resolved by M05: `docs/repositories.md` records the repository/primitive split and why `withTransaction` forces it, the four-statement `page` CTE and the total-order requirement its `id` tiebreaker exists for, the `updatedAt` bump matrix, the key-presence patch rule, atomic notebook deletion, and why there is no SQLite-error-code mapper. **Read it before touching `src/app/core/repositories/` or adding a sort order.** Two rules that will otherwise be broken silently: a new list ordering must end in a unique tiebreaker, and bulk work (M12's import) must compose the `*-writes.ts` primitives inside one `write()` rather than calling repository methods in a loop.
+
+Resolved by M06: `docs/markdown-and-editor.md` records what was ported verbatim from the desktop Markdown pipeline versus the three deliberate divergences, why `NotesStore` exists at all, the four independent layers that keep a note from reaching the network, and two testing gotchas that will otherwise be rediscovered the hard way. **Read it before touching `src/app/core/markdown/` or `src/app/features/notes/`.** Three rules that will otherwise be broken silently: the editor must write *through* `NotesStore` rather than the list reloading on re-enter (Ionic does not await `ionViewWillLeave`, so reload-on-re-enter races the editor's own flush); `compareActiveNotes` and the SQL ordering in `note-queries.ts` must move together, and `notes.store.spec.ts` cross-checks them; and `angular.json` must keep `"inlineCritical": false`, because the critical-CSS inliner emits an inline `onload` handler that the CSP blocks, silently leaving the app unstyled.
+
+`capacitor.config.ts` sets `loggingBehavior: 'none'`. Without it Capacitor's bridge logger writes every SQLite bind value and result row to logcat on debug builds, which means note titles and bodies.
 
 ## Commands
 
@@ -72,7 +77,7 @@ cd android && ./gradlew assembleDebug
 
 - **Browser targets** — `.browserslistrc` is Chromium-only (Chrome/ChromeAndroid ≥ 107), since the only shipping runtime is the Android WebView.
 
-Under `src/app/core/`, `localization/`, `preferences/`, `models/`, `database/` and `repositories/` hold code; `filesystem/`, `import-export/`, `markdown/` and `native/` are still empty placeholders. UI code must reach persistence only through the repository services in `core/repositories` — never via direct SQLite plugin calls, and never by injecting `DATABASE_ADAPTER` outside `core/database` and `core/repositories`.
+Under `src/app/core/`, `localization/`, `preferences/`, `models/`, `database/`, `repositories/` and `markdown/` hold code; `filesystem/`, `import-export/` and `native/` are still empty placeholders. UI code must reach persistence only through the repository services in `core/repositories` — never via direct SQLite plugin calls, and never by injecting `DATABASE_ADAPTER` outside `core/database` and `core/repositories`.
 
 Data flows in two separated layers: domain models (desktop-compatible, UUID-keyed) vs. SQLite row models. Notes/notebooks/labels/checklists/image *metadata* live in SQLite; image *bytes* live in app-private files and are referenced from Markdown as `glacier-img://<imageId>`.
 

@@ -7,6 +7,15 @@
 
   <base href="/" />
 
+  <!--
+    The backstop behind DOMPurify: even if a remote <img> or <script> survived
+    sanitizing, the WebView must not fetch it. 'unsafe-inline' is unavoidable for
+    styles because Angular injects component CSS as <style> tags, and blob: is
+    what M10's glacier-img:// handler will resolve image bytes to.
+    See docs/markdown-and-editor.md.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'" />
+
   <meta name="color-scheme" content="light dark" />
   <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="format-detection" content="telephone=no" />

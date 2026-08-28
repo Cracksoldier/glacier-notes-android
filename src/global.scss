@@ -51,3 +51,106 @@ ion-content {
 ion-fab[vertical="bottom"] {
   margin-bottom: var(--ion-safe-area-bottom, 0px);
 }
+
+// Ported from the desktop's src/styles.scss. Rendered markdown is injected via
+// [innerHTML], so these must be global -- Angular's view encapsulation rewrites
+// selectors for elements the template declares, and never reaches injected ones.
+// `.markdown-inline` and the search `mark` rules stay behind with M09 and M11.
+.markdown-body {
+  line-height: 1.5;
+  word-wrap: break-word;
+
+  img {
+    max-width: 100%;
+    border-radius: 6px;
+  }
+
+  > *:first-child {
+    margin-top: 0;
+  }
+
+  > *:last-child {
+    margin-bottom: 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 0.7em 0 0.35em;
+    line-height: 1.25;
+  }
+
+  h1 {
+    font-size: 1.5em;
+  }
+
+  h2 {
+    font-size: 1.3em;
+  }
+
+  h3 {
+    font-size: 1.15em;
+  }
+
+  p,
+  ul,
+  ol,
+  blockquote,
+  pre,
+  table {
+    margin: 0.4em 0;
+  }
+
+  ul,
+  ol {
+    padding-left: 1.4em;
+  }
+
+  a {
+    color: var(--color-accent);
+  }
+
+  code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background-color: var(--color-surface-elevated);
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 0.9em;
+  }
+
+  pre {
+    padding: 10px 12px;
+    border-radius: 8px;
+    background-color: var(--color-surface-elevated);
+    overflow-x: auto;
+
+    code {
+      padding: 0;
+      background: none;
+    }
+  }
+
+  blockquote {
+    padding-left: 12px;
+    border-left: 3px solid var(--color-accent-muted);
+    color: var(--color-text-muted);
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    padding: 4px 10px;
+    border: 1px solid var(--color-border);
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+  }
+}

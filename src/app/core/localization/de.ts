@@ -24,6 +24,30 @@ export const de: Record<TranslationKey, string> = {
   'grid.noNotesHint': 'Erstelle eine Notiz, um loszulegen.',
   'grid.nothingArchivedHint': 'Archivierte Notizen erscheinen hier.',
   'grid.trashEmptyHint': 'Gelöschte Notizen erscheinen hier.',
+  'grid.pinned': 'Angeheftet',
+  'grid.others': 'Weitere',
+
+  'card.emptyNote': 'Leere Notiz',
+
+  'editor.titlePlaceholder': 'Titel',
+  'editor.contentPlaceholder': 'Notiz schreiben…',
+  'editor.edit': 'Bearbeiten',
+  'editor.preview': 'Vorschau',
+  'editor.notFound': 'Diese Notiz existiert nicht mehr',
+  'editor.notFoundHint': 'Sie wurde vielleicht an anderer Stelle gelöscht.',
+  'editor.saveFailed': 'Speichern fehlgeschlagen. Dein Text ist noch da — versuche es erneut.',
+
+  'mdToolbar.bold': 'Fett',
+  'mdToolbar.italic': 'Kursiv',
+  'mdToolbar.h1': 'Überschrift 1',
+  'mdToolbar.h2': 'Überschrift 2',
+  'mdToolbar.ul': 'Aufzählung',
+  'mdToolbar.ol': 'Nummerierte Liste',
+  'mdToolbar.quote': 'Zitat',
+  'mdToolbar.link': 'Link',
+  'mdToolbar.code': 'Code',
+
+  'common.back': 'Zurück',
 
   'placeholder.notebooks': 'Notizbücher ordnen deine Notizen.',
   'placeholder.labels': 'Mit Labels kannst du Notizen notizbuchübergreifend kennzeichnen.',
@@ -47,4 +71,6 @@ export const de: Record<TranslationKey, string> = {
   'a11y.newNote': 'Neue Notiz',
   'a11y.themeMode': 'Designmodus',
   'a11y.language': 'Sprache',
+  'a11y.noteLayout': 'Notizlayout',
+  'a11y.formatting': 'Formatierung',
 };

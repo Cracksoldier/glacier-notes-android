@@ -26,6 +26,34 @@ export const en = {
   'grid.noNotesHint': 'Create a note to get started.',
   'grid.nothingArchivedHint': 'Archived notes appear here.',
   'grid.trashEmptyHint': 'Deleted notes appear here.',
+  'grid.pinned': 'Pinned',
+  'grid.others': 'Others',
+
+  'card.emptyNote': 'Empty note',
+
+  'editor.titlePlaceholder': 'Title',
+  'editor.contentPlaceholder': 'Take a note…',
+  'editor.edit': 'Edit',
+  'editor.preview': 'Preview',
+  // android: the desktop dialog cannot be reached with a stale link.
+  'editor.notFound': 'This note no longer exists',
+  'editor.notFoundHint': 'It may have been deleted on another screen.',
+  // android: the desktop writes to a file it has already opened; a phone can
+  // run out of storage mid-edit, so the failure needs its own wording.
+  'editor.saveFailed': 'Could not save. Your text is still here — try again.',
+
+  'mdToolbar.bold': 'Bold',
+  'mdToolbar.italic': 'Italic',
+  'mdToolbar.h1': 'Heading 1',
+  'mdToolbar.h2': 'Heading 2',
+  'mdToolbar.ul': 'Bulleted list',
+  'mdToolbar.ol': 'Numbered list',
+  // android: no desktop counterpart -- the desktop toolbar has no quote button.
+  'mdToolbar.quote': 'Quote',
+  'mdToolbar.link': 'Link',
+  'mdToolbar.code': 'Code',
+
+  'common.back': 'Back',
 
   // android: placeholder copy for destinations the desktop reaches differently.
   'placeholder.notebooks': 'Notebooks organise your notes.',
@@ -50,6 +78,8 @@ export const en = {
   'a11y.newNote': 'New note',
   'a11y.themeMode': 'Theme mode',
   'a11y.language': 'Language',
+  'a11y.noteLayout': 'Note layout',
+  'a11y.formatting': 'Formatting',
 } as const;
 
 export type TranslationKey = keyof typeof en;
