@@ -14,6 +14,7 @@ import {
   IonSelect,
   IonSelectOption,
   IonTitle,
+  IonToggle,
   IonToolbar,
 } from '@ionic/angular';
 
@@ -41,6 +42,7 @@ import { NotebooksStore } from '../notebooks/notebooks.store';
     IonSelect,
     IonSelectOption,
     IonTitle,
+    IonToggle,
     IonToolbar,
   ],
   template: `
@@ -122,6 +124,23 @@ import { NotebooksStore } from '../notebooks/notebooks.store';
       </ion-list>
 
       <ion-list [inset]="true">
+        <ion-list-header>{{ i18n.t('settings.checklists') }}</ion-list-header>
+        <ion-item lines="none">
+          <ion-toggle
+            [checked]="settings.moveCheckedToBottom()"
+            (ionChange)="onMoveCheckedToBottomChange($event)"
+          >
+            {{ i18n.t('settings.moveCheckedToBottom') }}
+          </ion-toggle>
+        </ion-item>
+        <ion-item lines="none">
+          <ion-note class="settings__sample">
+            {{ i18n.t('settings.moveCheckedToBottomHint') }}
+          </ion-note>
+        </ion-item>
+      </ion-list>
+
+      <ion-list [inset]="true">
         <ion-list-header>{{ i18n.t('settings.trash') }}</ion-list-header>
         <ion-item lines="none">
           <ion-select
@@ -180,6 +199,11 @@ export class SettingsPage {
   onLanguageChange(event: Event): void {
     const { value } = (event as CustomEvent<{ value: string }>).detail;
     this.settings.setLanguage(value as LanguageCode);
+  }
+
+  onMoveCheckedToBottomChange(event: Event): void {
+    const { checked } = (event as CustomEvent<{ checked: boolean }>).detail;
+    this.settings.setMoveCheckedToBottom(checked);
   }
 
   onTrashAutoPurgeChange(event: Event): void {

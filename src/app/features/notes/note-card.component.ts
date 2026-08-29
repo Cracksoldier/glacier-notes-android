@@ -12,10 +12,15 @@ import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import { I18nService } from '../../core/localization/i18n.service';
 import { MarkdownService } from '../../core/markdown/markdown.service';
 import type { Note } from '../../core/models/note';
+import { SettingsStore } from '../../core/preferences/settings.store';
 import { LabelsStore } from '../labels/labels.store';
 import { faThumbtack } from '../../shared/utilities/glacier-icons';
+import { displayOrder } from './checklist-model';
 import { LongPressTracker } from './long-press';
 import { noteColorVar } from './note-colors';
+
+/** The desktop's own cut-off (`note-card.ts`), so a card is the same height in both apps. */
+const CARD_ITEM_LIMIT = 8;
 
 /**
  * The desktop's note card (`note-card.scss`), with its hover-revealed action row
@@ -43,7 +48,19 @@ import { noteColorVar } from './note-colors';
         <h3 class="note-card__title">{{ note().title }}</h3>
       }
 
-      @if (note().content) {
+      @if (checklist().length) {
+        <ul class="note-card__preview note-card__items">
+          @for (item of checklist(); track item.id) {
+            <li class="note-card__item" [class.note-card__item--checked]="item.checked">
+              <span class="note-card__box">{{ item.checked ? '☑' : '☐' }}</span>
+              <span class="note-card__item-text" [innerHTML]="item.html"></span>
+            </li>
+          }
+        </ul>
+        @if (hiddenItems()) {
+          <p class="note-card__more">{{ i18n.t('card.more', { count: hiddenItems() }) }}</p>
+        }
+      } @else if (note().content) {
         <div class="note-card__preview markdown-body" [innerHTML]="preview()"></div>
       } @else if (!note().title) {
         <p class="note-card__blank">{{ i18n.t('card.emptyNote') }}</p>
@@ -113,6 +130,35 @@ import { noteColorVar } from './note-colors';
       pointer-events: none;
     }
 
+    .note-card__items {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .note-card__item {
+      display: flex;
+      gap: 6px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .note-card__item--checked {
+      color: var(--color-text-muted);
+      text-decoration: line-through;
+    }
+
+    .note-card__box {
+      flex: none;
+    }
+
+    .note-card__more {
+      margin: 4px 0 0;
+      color: var(--color-text-muted);
+      font-size: 12px;
+      pointer-events: none;
+    }
+
     .note-card__blank {
       margin: 0;
       color: var(--color-text-muted);
@@ -142,6 +188,7 @@ export class NoteCardComponent implements OnDestroy {
   readonly i18n = inject(I18nService);
   private readonly markdown = inject(MarkdownService);
   private readonly labels = inject(LabelsStore);
+  private readonly settings = inject(SettingsStore);
 
   readonly note = input.required<Note>();
 
@@ -153,6 +200,28 @@ export class NoteCardComponent implements OnDestroy {
   private readonly tracker = new LongPressTracker({ onLongPress: () => this.longPress.emit() });
 
   protected readonly preview = computed(() => this.markdown.renderPreview(this.note().content));
+
+  /**
+   * Item text is rendered inline rather than shown raw: the editor edits the
+   * Markdown source, the card displays it. Empty placeholder rows are dropped —
+   * a card is not the place to advertise an unfinished line.
+   */
+  protected readonly checklist = computed(() =>
+    displayOrder(this.note().checklist ?? [], this.settings.moveCheckedToBottom())
+      .filter((item) => item.text.trim() !== '')
+      .slice(0, CARD_ITEM_LIMIT)
+      .map((item) => ({
+        id: item.id,
+        checked: item.checked,
+        html: this.markdown.renderInline(item.text),
+      })),
+  );
+
+  protected readonly hiddenItems = computed(
+    () =>
+      (this.note().checklist ?? []).filter((item) => item.text.trim() !== '').length -
+      this.checklist().length,
+  );
 
   /**
    * `null` clears the inline style, which lets the stylesheet's

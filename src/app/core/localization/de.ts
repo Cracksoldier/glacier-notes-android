@@ -29,6 +29,7 @@ export const de: Record<TranslationKey, string> = {
   'grid.others': 'Weitere',
 
   'card.emptyNote': 'Leere Notiz',
+  'card.more': '+{count} weitere',
 
   'notebook.deleteTitle': 'Notizbuch "{name}" löschen?',
   'notebook.containsOne': 'Dieses Notizbuch enthält 1 Notiz.',
@@ -93,6 +94,13 @@ export const de: Record<TranslationKey, string> = {
   'editor.notFound': 'Diese Notiz existiert nicht mehr',
   'editor.notFoundHint': 'Sie wurde vielleicht an anderer Stelle gelöscht.',
   'editor.saveFailed': 'Speichern fehlgeschlagen. Dein Text ist noch da — versuche es erneut.',
+  'editor.convertToText': 'In Textnotiz umwandeln',
+  'editor.convertToChecklist': 'In Checkliste umwandeln',
+
+  'checklist.addItem': 'Eintrag hinzufügen',
+  'checklist.itemPlaceholder': 'Listeneintrag',
+  'checklist.removeItem': 'Eintrag entfernen',
+  'checklist.dragToReorder': 'Zum Sortieren ziehen',
 
   'mdToolbar.bold': 'Fett',
   'mdToolbar.italic': 'Kursiv',
@@ -124,6 +132,11 @@ export const de: Record<TranslationKey, string> = {
   'settings.dateSample': 'Datumsangaben sehen so aus: {date}',
   'settings.localOnly':
     'Diese Einstellungen werden nur auf diesem Gerät gespeichert. Sie sind nicht Teil eines .glacier.json-Exports.',
+  'settings.checklists': 'Checklisten',
+  'settings.moveCheckedToBottom': 'Erledigte Einträge nach unten',
+  'settings.moveCheckedToBottomHint':
+    'Ändert nur die Anzeige. Die gespeicherte Reihenfolge bleibt unverändert.',
+
   'settings.trash': 'Papierkorb',
   'settings.trashAutoPurge': 'Notizen im Papierkorb löschen nach',
   'settings.trashAutoPurgeNever': 'Nie',
@@ -133,6 +146,9 @@ export const de: Record<TranslationKey, string> = {
   'a11y.openMenu': 'Navigationsmenü öffnen',
   'a11y.searchNotes': 'Notizen durchsuchen',
   'a11y.newNote': 'Neue Notiz',
+  'a11y.newChecklist': 'Neue Checkliste',
+  'a11y.checklistItems': 'Checklisteneinträge',
+  'a11y.convertNote': 'Notiztyp ändern',
   'a11y.themeMode': 'Designmodus',
   'a11y.language': 'Sprache',
   'a11y.noteLayout': 'Notizlayout',

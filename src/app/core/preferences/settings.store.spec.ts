@@ -39,6 +39,7 @@ describe('SettingsStore', () => {
     expect(store.noteLayout()).toBe('list');
     expect(store.sortOrder()).toBe('updatedDesc');
     expect(store.lastSelectedNotebookId()).toBeNull();
+    expect(store.moveCheckedToBottom()).toBe(false);
   });
 
   it('resolves the device language on first launch', async () => {
@@ -107,6 +108,7 @@ describe('SettingsStore', () => {
     expect(Object.keys(await persisted(adapter)).sort()).toEqual([
       'language',
       'lastSelectedNotebookId',
+      'moveCheckedToBottom',
       'noteLayout',
       'sortOrder',
       'themeMode',
@@ -128,6 +130,28 @@ describe('SettingsStore', () => {
     TestBed.tick();
 
     expect((await persisted(adapter))['trashAutoPurgeDays']).toBe(7);
+  });
+
+  it('round-trips the completed-item grouping', async () => {
+    const adapter = configure();
+    const store = TestBed.inject(SettingsStore);
+    await store.init();
+
+    store.setMoveCheckedToBottom(true);
+    TestBed.tick();
+
+    expect((await persisted(adapter))['moveCheckedToBottom']).toBe(true);
+  });
+
+  it('falls back to the default for a grouping flag that is not a boolean', async () => {
+    for (const value of ['true', 1, null]) {
+      configure(JSON.stringify({ moveCheckedToBottom: value }));
+      const store = TestBed.inject(SettingsStore);
+      await store.init();
+
+      expect(store.moveCheckedToBottom()).toBe(false);
+      TestBed.resetTestingModule();
+    }
   });
 
   it('falls back to the default for a window that is not a whole number of days', async () => {

@@ -37,11 +37,11 @@ describe('NotesStore', () => {
     });
   });
 
-  describe('createTextNote', () => {
+  describe('createNote', () => {
     it('creates a text note in the default notebook and adds it to the list', async () => {
       await store.load();
 
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
 
       expect(note.notebookId).toBe(repositories.defaultNotebookId);
       expect(note.type).toBe('text');
@@ -52,9 +52,18 @@ describe('NotesStore', () => {
       const work = await repositories.notebooks.create('Work');
       await store.setView({ kind: 'notebook', notebookId: work.id });
 
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
 
       expect(note.notebookId).toBe(work.id);
+    });
+
+    it('creates a checklist note with no items rather than a missing array', async () => {
+      await store.load();
+
+      const note = await store.createNote('checklist');
+
+      expect(note.type).toBe('checklist');
+      expect(note.checklist).toEqual([]);
     });
   });
 
@@ -79,7 +88,7 @@ describe('NotesStore', () => {
     it('drops the note from the notebook view it left', async () => {
       const work = await repositories.notebooks.create('Work');
       await store.setView({ kind: 'notebook', notebookId: work.id });
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
 
       await store.moveNote(note.id, repositories.defaultNotebookId);
 
@@ -91,7 +100,7 @@ describe('NotesStore', () => {
 
     it('keeps the note in the active view, which spans every notebook', async () => {
       const work = await repositories.notebooks.create('Work');
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
 
       await store.moveNote(note.id, work.id);
 
@@ -101,7 +110,7 @@ describe('NotesStore', () => {
 
     // A background autosave swallows its failure; an explicit move must not.
     it('rethrows a failed move', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       vi.spyOn(repositories.notes, 'move').mockRejectedValue(new Error('gone'));
 
       await expect(store.moveNote(note.id, repositories.defaultNotebookId)).rejects.toThrow();
@@ -110,7 +119,7 @@ describe('NotesStore', () => {
 
   describe('save', () => {
     it('replaces the note in place', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
 
       await store.save(note.id, { title: 'Groceries', content: '- milk' });
 
@@ -121,7 +130,7 @@ describe('NotesStore', () => {
     });
 
     it('persists through the repository, not just the signal', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
 
       await store.save(note.id, { title: 'Groceries' });
 
@@ -131,9 +140,9 @@ describe('NotesStore', () => {
     it('lifts an edited note back to the top of the list', async () => {
       vi.useFakeTimers();
       vi.setSystemTime(Date.UTC(2026, 0, 1));
-      const first = await store.createTextNote();
+      const first = await store.createNote('text');
       vi.advanceTimersByTime(60_000);
-      const second = await store.createTextNote();
+      const second = await store.createNote('text');
 
       expect(store.notes().map((note) => note.id)).toEqual([second.id, first.id]);
 
@@ -149,7 +158,7 @@ describe('NotesStore', () => {
     it('keeps a saved note in the notebook view it still belongs to', async () => {
       const work = await repositories.notebooks.create('Work');
       await store.setView({ kind: 'notebook', notebookId: work.id });
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
 
       await store.save(note.id, { title: 'Sprint plan' });
 
@@ -157,7 +166,7 @@ describe('NotesStore', () => {
     });
 
     it('flags a failed write and keeps the previous list', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       vi.spyOn(repositories.notes, 'update').mockRejectedValue(new Error('no space'));
 
       await store.save(note.id, { title: 'lost?' });
@@ -167,7 +176,7 @@ describe('NotesStore', () => {
     });
 
     it('clears the failure flag on the next successful write', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const update = vi
         .spyOn(repositories.notes, 'update')
         .mockRejectedValueOnce(new Error('no space'));
@@ -184,7 +193,7 @@ describe('NotesStore', () => {
 
   describe('discard', () => {
     it('purges the note and drops it from the list', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
 
       await store.discard(note.id);
 
@@ -195,8 +204,8 @@ describe('NotesStore', () => {
 
   describe('partitioning', () => {
     it('splits pinned notes from the rest', async () => {
-      const plain = await store.createTextNote();
-      const sticky = await store.createTextNote();
+      const plain = await store.createNote('text');
+      const sticky = await store.createNote('text');
       await repositories.notes.setPinned(sticky.id, true);
       await store.load();
 
@@ -211,8 +220,8 @@ describe('NotesStore', () => {
   // TypeScript.
   describe('organizing', () => {
     it('re-sorts a pinned note without re-reading the list', async () => {
-      const sticky = await store.createTextNote();
-      await store.createTextNote();
+      const sticky = await store.createNote('text');
+      await store.createNote('text');
       const list = vi.spyOn(repositories.notes, 'list');
 
       await store.setPinned(sticky.id, true);
@@ -223,7 +232,7 @@ describe('NotesStore', () => {
     });
 
     it('colours a note in place, and clears the colour again', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const list = vi.spyOn(repositories.notes, 'list');
 
       await store.setColor(note.id, 'teal');
@@ -235,7 +244,7 @@ describe('NotesStore', () => {
     });
 
     it('drops an archived note from the active view and finds it in the archive', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
 
       await store.setArchived(note.id, true);
       expect(store.notes()).toEqual([]);
@@ -248,7 +257,7 @@ describe('NotesStore', () => {
     });
 
     it('moves a note to the trash and back', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
 
       await store.trash(note.id);
       expect(store.notes()).toEqual([]);
@@ -263,7 +272,7 @@ describe('NotesStore', () => {
 
     it('drops a note from a label view once the label is taken off it', async () => {
       const label = await repositories.labels.create('Work');
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       await store.setLabels(note.id, [label.id]);
 
       await store.setView({ kind: 'label', labelId: label.id });
@@ -274,8 +283,8 @@ describe('NotesStore', () => {
     });
 
     it('deletes one note forever and empties the whole trash', async () => {
-      const single = await store.createTextNote();
-      const rest = await store.createTextNote();
+      const single = await store.createNote('text');
+      const rest = await store.createNote('text');
       await store.trash(single.id);
       await store.trash(rest.id);
       await store.setView({ kind: 'trashed' });

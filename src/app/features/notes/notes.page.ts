@@ -14,7 +14,7 @@ import {
 } from '@ionic/angular';
 
 import { I18nService } from '../../core/localization/i18n.service';
-import type { Note } from '../../core/models/note';
+import type { Note, NoteType } from '../../core/models/note';
 import { SettingsStore } from '../../core/preferences/settings.store';
 import { LabelsStore } from '../labels/labels.store';
 import { NotebooksStore } from '../notebooks/notebooks.store';
@@ -22,6 +22,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
 import {
   faBars,
   faFileLines,
+  faListCheck,
   faMagnifyingGlass,
   faPlus,
   faTableCells,
@@ -87,11 +88,29 @@ import { NotesStore } from './notes.store';
       }
 
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-        <ion-fab-button (click)="create()" [attr.aria-label]="i18n.t('a11y.newNote')">
+        <ion-fab-button
+          size="small"
+          class="notes__fab-checklist"
+          (click)="create('checklist')"
+          [attr.aria-label]="i18n.t('a11y.newChecklist')"
+        >
+          <fa-icon [icon]="checklistIcon" />
+        </ion-fab-button>
+        <ion-fab-button (click)="create('text')" [attr.aria-label]="i18n.t('a11y.newNote')">
           <fa-icon [icon]="addIcon" />
         </ion-fab-button>
       </ion-fab>
     </ion-content>
+  `,
+  styles: `
+    /* Two always-visible buttons rather than an ion-fab-list, so neither kind of
+       note costs a second tap. ion-fab lays its children out as blocks. */
+    ion-fab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
   `,
 })
 export class NotesPage {
@@ -111,6 +130,7 @@ export class NotesPage {
   readonly emptyIcon = faFileLines;
   readonly searchIcon = faMagnifyingGlass;
   readonly addIcon = faPlus;
+  readonly checklistIcon = faListCheck;
   readonly gridIcon = faTableCells;
   readonly listIcon = faBars;
 
@@ -166,8 +186,8 @@ export class NotesPage {
     void this.prompts.actions(note, this.store.view().kind);
   }
 
-  async create(): Promise<void> {
-    const note = await this.store.createTextNote();
+  async create(type: NoteType): Promise<void> {
+    const note = await this.store.createNote(type);
     // `created` marks the note as this session's, so the editor knows it may
     // discard it if the user leaves without typing anything.
     await this.router.navigate(['/notes', note.id], { queryParams: { created: 1 } });

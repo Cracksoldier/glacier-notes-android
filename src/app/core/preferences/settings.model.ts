@@ -14,6 +14,8 @@ export interface Settings {
   lastSelectedNotebookId: string | null;
   /** Days a note may sit in the trash before startup purges it; 0 disables. */
   trashAutoPurgeDays: number;
+  /** Groups ticked checklist items below the rest. Display only — see docs/checklists.md. */
+  moveCheckedToBottom: boolean;
 }
 
 /** Ten years. Anything larger is indistinguishable from "never" but harder to reason about. */
@@ -33,6 +35,7 @@ export function defaultSettings(deviceLocale: string): Settings {
     sortOrder: 'updatedDesc',
     lastSelectedNotebookId: null,
     trashAutoPurgeDays: 30,
+    moveCheckedToBottom: false,
   };
 }
 
@@ -56,7 +59,12 @@ export function sanitizeSettings(raw: unknown, deviceLocale: string): Settings {
     sortOrder: pick(record['sortOrder'], NOTE_SORT_ORDERS, defaults.sortOrder),
     lastSelectedNotebookId: typeof notebookId === 'string' ? notebookId : null,
     trashAutoPurgeDays: pickDays(record['trashAutoPurgeDays'], defaults.trashAutoPurgeDays),
+    moveCheckedToBottom: pickBoolean(record['moveCheckedToBottom'], defaults.moveCheckedToBottom),
   };
+}
+
+function pickBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
 }
 
 /**

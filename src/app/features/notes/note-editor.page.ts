@@ -20,6 +20,9 @@ import { IonButton, IonButtons, IonContent, IonHeader, IonTitle, IonToolbar } fr
 import { I18nService } from '../../core/localization/i18n.service';
 import { applyToolbarAction, type ToolbarAction } from '../../core/markdown/markdown-edit';
 import { MarkdownService } from '../../core/markdown/markdown.service';
+import type { ChecklistItem } from '../../core/models/checklist-item';
+import type { NoteType } from '../../core/models/note';
+import { SettingsStore } from '../../core/preferences/settings.store';
 import { NoteRepository } from '../../core/repositories/note.repository';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 import {
@@ -27,6 +30,8 @@ import {
   faBook,
   faCircleQuestion,
   faEye,
+  faFileLines,
+  faListCheck,
   faPen,
   faTag,
 } from '../../shared/utilities/glacier-icons';
@@ -34,6 +39,8 @@ import { LabelPrompts } from '../labels/label-prompts';
 import { LabelsStore } from '../labels/labels.store';
 import { NotebookPrompts } from '../notebooks/notebook-prompts';
 import { NotebooksStore } from '../notebooks/notebooks.store';
+import { ChecklistEditorComponent } from './checklist-editor.component';
+import { checklistToText, textToChecklist } from './checklist-model';
 import { MarkdownToolbarComponent } from './markdown-toolbar.component';
 import { NotesStore } from './notes.store';
 
@@ -45,6 +52,7 @@ type EditorStatus = 'loading' | 'ready' | 'missing';
   selector: 'app-note-editor-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    ChecklistEditorComponent,
     EmptyStateComponent,
     FaIconComponent,
     IonButton,
@@ -66,11 +74,23 @@ type EditorStatus = 'loading' | 'ready' | 'missing';
         @if (status() === 'ready') {
           <ion-buttons slot="end">
             <ion-button
-              (click)="previewMode.set(!previewMode())"
-              [attr.aria-label]="previewMode() ? i18n.t('editor.edit') : i18n.t('editor.preview')"
+              class="editor__convert"
+              (click)="convert()"
+              [attr.aria-label]="
+                isChecklist() ? i18n.t('editor.convertToText') : i18n.t('editor.convertToChecklist')
+              "
             >
-              <fa-icon [icon]="previewMode() ? editIcon : previewIcon" />
+              <fa-icon [icon]="isChecklist() ? textNoteIcon : checklistIcon" />
             </ion-button>
+            @if (!isChecklist()) {
+              <ion-button
+                class="editor__preview-toggle"
+                (click)="previewMode.set(!previewMode())"
+                [attr.aria-label]="previewMode() ? i18n.t('editor.edit') : i18n.t('editor.preview')"
+              >
+                <fa-icon [icon]="previewMode() ? editIcon : previewIcon" />
+              </ion-button>
+            }
           </ion-buttons>
         } @else {
           <ion-title>{{ i18n.t('sidebar.notes') }}</ion-title>
@@ -117,17 +137,26 @@ type EditorStatus = 'loading' | 'ready' | 'missing';
             </button>
           </div>
 
-          <app-markdown-toolbar
-            class="editor__toolbar"
-            [disabled]="previewMode()"
-            (action)="onToolbar($event)"
-          />
+          @if (!isChecklist()) {
+            <app-markdown-toolbar
+              class="editor__toolbar"
+              [disabled]="previewMode()"
+              (action)="onToolbar($event)"
+            />
+          }
 
           @if (store.saveFailed()) {
             <p class="editor__error" role="alert">{{ i18n.t('editor.saveFailed') }}</p>
           }
 
-          @if (previewMode()) {
+          @if (isChecklist()) {
+            <app-checklist-editor
+              class="editor__checklist"
+              [items]="items()"
+              (itemsChange)="onItemsChange($event)"
+              [moveCheckedToBottom]="settings.moveCheckedToBottom()"
+            />
+          } @else if (previewMode()) {
             <div
               class="editor__preview markdown-body"
               [innerHTML]="previewHtml()"
@@ -228,6 +257,10 @@ type EditorStatus = 'loading' | 'ready' | 'missing';
       margin-top: 8px;
       font-size: 15px;
     }
+
+    .editor__checklist {
+      margin-top: 4px;
+    }
   `,
 })
 export class NoteEditorPage implements OnDestroy {
@@ -250,6 +283,7 @@ export class NoteEditorPage implements OnDestroy {
   private readonly notebookPrompts = inject(NotebookPrompts);
   private readonly labels = inject(LabelsStore);
   private readonly labelPrompts = inject(LabelPrompts);
+  protected readonly settings = inject(SettingsStore);
 
   protected readonly backIcon = faArrowLeft;
   protected readonly previewIcon = faEye;
@@ -257,12 +291,17 @@ export class NoteEditorPage implements OnDestroy {
   protected readonly missingIcon = faCircleQuestion;
   protected readonly notebookIcon = faBook;
   protected readonly labelIcon = faTag;
+  protected readonly checklistIcon = faListCheck;
+  protected readonly textNoteIcon = faFileLines;
 
   protected readonly title = signal('');
   protected readonly content = signal('');
+  protected readonly type = signal<NoteType>('text');
+  protected readonly items = signal<ChecklistItem[]>([]);
   protected readonly previewMode = signal(false);
   protected readonly status = signal<EditorStatus>('loading');
   protected readonly previewHtml = computed(() => this.markdown.render(this.content()));
+  protected readonly isChecklist = computed(() => this.type() === 'checklist');
 
   private readonly notebookId = signal('');
   protected readonly notebookName = computed(
@@ -318,6 +357,11 @@ export class NoteEditorPage implements OnDestroy {
 
   protected onContentInput(value: string): void {
     this.content.set(value);
+    this.scheduleSave();
+  }
+
+  protected onItemsChange(items: ChecklistItem[]): void {
+    this.items.set(items);
     this.scheduleSave();
   }
 
@@ -390,6 +434,8 @@ export class NoteEditorPage implements OnDestroy {
     }
     this.title.set(note.title);
     this.content.set(note.content);
+    this.type.set(note.type);
+    this.items.set([...(note.checklist ?? [])]);
     this.notebookId.set(note.notebookId);
     this.labelIds.set(note.labels);
     this.status.set('ready');
@@ -412,7 +458,40 @@ export class NoteEditorPage implements OnDestroy {
       return;
     }
     this.dirty = false;
-    await this.store.save(this.id(), { title: this.title(), content: this.content() });
+    // A checklist note must not write `content`: the patch is key-presence
+    // based, so sending both would leave stale Markdown behind the items.
+    await this.store.save(
+      this.id(),
+      this.isChecklist()
+        ? { title: this.title(), checklist: this.items() }
+        : { title: this.title(), content: this.content() },
+    );
+  }
+
+  /**
+   * Flushed first for the same `updatedAt` reason as `chooseNotebook`, then
+   * written as one patch so the type change and the content it produces cannot
+   * land as two rows-with-no-body states.
+   */
+  protected async convert(): Promise<void> {
+    if (this.status() !== 'ready') {
+      return;
+    }
+    await this.flush();
+    if (this.isChecklist()) {
+      const content = checklistToText(this.items());
+      await this.store.save(this.id(), { type: 'text', content, checklist: [] });
+      this.content.set(content);
+      this.items.set([]);
+      this.type.set('text');
+    } else {
+      const checklist = textToChecklist(this.content());
+      await this.store.save(this.id(), { type: 'checklist', content: '', checklist });
+      this.items.set(checklist);
+      this.content.set('');
+      this.type.set('checklist');
+      this.previewMode.set(false);
+    }
   }
 
   private async leave(): Promise<void> {
@@ -420,10 +499,17 @@ export class NoteEditorPage implements OnDestroy {
     if (this.discarded || !this.created() || this.status() !== 'ready') {
       return;
     }
-    if (this.title().trim() === '' && this.content().trim() === '') {
+    if (this.title().trim() === '' && this.isEmptyBody()) {
       this.discarded = true;
       await this.store.discard(this.id());
     }
+  }
+
+  /** A checklist of blank placeholder rows is as empty as an untouched textarea. */
+  private isEmptyBody(): boolean {
+    return this.isChecklist()
+      ? this.items().every((item) => item.text.trim() === '')
+      : this.content().trim() === '';
   }
 }
 

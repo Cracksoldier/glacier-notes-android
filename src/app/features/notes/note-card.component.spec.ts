@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Note } from '../../core/models/note';
 import { MemoryPreferencesAdapter } from '../../core/preferences/memory-preferences.adapter';
 import { PREFERENCES_ADAPTER } from '../../core/preferences/preferences-adapter';
+import { SettingsStore } from '../../core/preferences/settings.store';
 import { createTestRepositories, type TestRepositories } from '../../core/repositories/testing';
 import { LabelsStore } from '../labels/labels.store';
 import { NoteCardComponent } from './note-card.component';
@@ -76,6 +77,71 @@ describe('NoteCardComponent', () => {
     expect([...host.querySelectorAll('.note-card__label')].map((el) => el.textContent)).toEqual([
       'Work',
     ]);
+  });
+
+  describe('the checklist preview', () => {
+    function items(count: number, checked = false) {
+      return Array.from({ length: count }, (_, index) => ({
+        id: `i${index}`,
+        text: `item ${index}`,
+        checked,
+        sortOrder: index,
+      }));
+    }
+
+    // The editor edits Markdown source; the card renders it, inline only.
+    it('renders each item with its check state and inline markup', () => {
+      const host: HTMLElement = render({
+        type: 'checklist',
+        checklist: [
+          { id: 'a', text: '**milk**', checked: false, sortOrder: 0 },
+          { id: 'b', text: 'eggs', checked: true, sortOrder: 1 },
+        ],
+      }).nativeElement;
+
+      const rows = [...host.querySelectorAll('.note-card__item')];
+      expect(rows[0]?.querySelector('.note-card__item-text')?.innerHTML).toBe(
+        '<strong>milk</strong>',
+      );
+      expect(rows[0]?.classList.contains('note-card__item--checked')).toBe(false);
+      expect(rows[1]?.classList.contains('note-card__item--checked')).toBe(true);
+      expect(host.querySelector('.note-card__more')).toBeNull();
+    });
+
+    it('cuts the list off and counts the remainder', () => {
+      const host: HTMLElement = render({
+        type: 'checklist',
+        checklist: items(11),
+      }).nativeElement;
+
+      expect(host.querySelectorAll('.note-card__item')).toHaveLength(8);
+      expect(host.querySelector('.note-card__more')?.textContent).toContain('+3 more');
+    });
+
+    it('skips blank rows and falls back to the empty note line', () => {
+      const host: HTMLElement = render({
+        type: 'checklist',
+        checklist: [{ id: 'a', text: '  ', checked: false, sortOrder: 0 }],
+      }).nativeElement;
+
+      expect(host.querySelector('.note-card__item')).toBeNull();
+      expect(host.querySelector('.note-card__blank')?.textContent).toContain('Empty note');
+    });
+
+    it('groups checked items last when the setting is on', () => {
+      TestBed.inject(SettingsStore).setMoveCheckedToBottom(true);
+      const host: HTMLElement = render({
+        type: 'checklist',
+        checklist: [
+          { id: 'a', text: 'milk', checked: true, sortOrder: 0 },
+          { id: 'b', text: 'eggs', checked: false, sortOrder: 1 },
+        ],
+      }).nativeElement;
+
+      expect(
+        [...host.querySelectorAll('.note-card__item-text')].map((el) => el.textContent),
+      ).toEqual(['eggs', 'milk']);
+    });
   });
 
   it('paints a known colour and leaves an unknown one to the stylesheet', () => {

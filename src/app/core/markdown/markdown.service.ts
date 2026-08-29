@@ -9,8 +9,7 @@ import { marked } from 'marked';
  * sanitizer configuration, so the same document produces the same output in
  * both apps -- which matters once M12 round-trips `.glacier.json` between them.
  *
- * Not ported: `renderInline` (checklist item text, M09) and the search-highlight
- * argument (M11). Both would be dead code here.
+ * Not ported: the search-highlight argument (M11), which would be dead code here.
  */
 
 const PREVIEW_SOURCE_LIMIT = 600;
@@ -57,6 +56,25 @@ export class MarkdownService {
         ? `${markdown.slice(0, PREVIEW_SOURCE_LIMIT)}…`
         : markdown,
     );
+  }
+
+  /**
+   * Checklist item text. Inline-only — bold, italic, code and links, but no
+   * headings, lists or blockquotes, since an item is one line inside a row that
+   * has a checkbox next to it. Images are forbidden outright rather than left
+   * to the `afterSanitizeAttributes` hook: an item is not a place for one.
+   */
+  renderInline(markdown: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(this.renderInlineToHtml(markdown));
+  }
+
+  /** Exposed for the same reason as `renderToHtml`. */
+  renderInlineToHtml(markdown: string): string {
+    const html = marked.parseInline(markdown, { gfm: true, breaks: true, async: false });
+    return DOMPurify.sanitize(html, {
+      FORBID_TAGS: ['img', 'style', 'form', 'input', 'button'],
+      ALLOWED_URI_REGEXP: ALLOWED_URI,
+    });
   }
 
   /** The sanitized string, exposed so specs can assert on markup rather than on a SafeHtml box. */

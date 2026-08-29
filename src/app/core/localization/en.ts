@@ -31,6 +31,7 @@ export const en = {
   'grid.others': 'Others',
 
   'card.emptyNote': 'Empty note',
+  'card.more': '+{count} more',
 
   'notebook.deleteTitle': 'Delete notebook "{name}"?',
   'notebook.containsOne': 'This notebook contains 1 note.',
@@ -104,6 +105,13 @@ export const en = {
   // android: the desktop writes to a file it has already opened; a phone can
   // run out of storage mid-edit, so the failure needs its own wording.
   'editor.saveFailed': 'Could not save. Your text is still here — try again.',
+  'editor.convertToText': 'Convert to text note',
+  'editor.convertToChecklist': 'Convert to checklist',
+
+  'checklist.addItem': 'Add item',
+  'checklist.itemPlaceholder': 'List item',
+  'checklist.removeItem': 'Remove item',
+  'checklist.dragToReorder': 'Drag to reorder',
 
   'mdToolbar.bold': 'Bold',
   'mdToolbar.italic': 'Italic',
@@ -136,6 +144,13 @@ export const en = {
   'settings.dateSample': 'Dates look like: {date}',
   'settings.localOnly':
     'These settings are stored on this device only. They are not part of a .glacier.json export.',
+  'settings.checklists': 'Checklists',
+  'settings.moveCheckedToBottom': 'Move completed items to the bottom',
+  // android: the desktop toggle carries no explanation. On a phone the stored
+  // order is not otherwise visible, so it has to say that this is display only.
+  'settings.moveCheckedToBottomHint':
+    'Changes how items are shown. Their saved order stays as it is.',
+
   // android: the desktop keeps trashAutoPurgeDays in its settings file with no
   // way to change it (docs/desktop-audit.md §6, §11.7).
   'settings.trash': 'Trash',
@@ -148,6 +163,9 @@ export const en = {
   'a11y.openMenu': 'Open navigation menu',
   'a11y.searchNotes': 'Search notes',
   'a11y.newNote': 'New note',
+  'a11y.newChecklist': 'New checklist',
+  'a11y.checklistItems': 'Checklist items',
+  'a11y.convertNote': 'Change note type',
   'a11y.themeMode': 'Theme mode',
   'a11y.language': 'Language',
   'a11y.noteLayout': 'Note layout',

@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { ImageGcService } from '../../core/images/image-gc.service';
-import type { Note } from '../../core/models/note';
+import type { Note, NoteType } from '../../core/models/note';
 import type { NoteView } from '../../core/repositories/note-queries';
 import { NotebookRepository } from '../../core/repositories/notebook.repository';
 import { NoteRepository, type NoteUpdatePatch } from '../../core/repositories/note.repository';
@@ -79,11 +79,13 @@ export class NotesStore {
    * notebook. Creating a note inside a notebook and having it land elsewhere
    * would read as a bug.
    */
-  async createTextNote(): Promise<Note> {
+  async createNote(type: NoteType): Promise<Note> {
     const view = this.currentView();
     const notebookId =
       view.kind === 'notebook' ? view.notebookId : await this.notebooks.getDefaultId();
-    const note = await this.notesRepository.create({ notebookId, type: 'text' });
+    const note = await this.notesRepository.create(
+      type === 'checklist' ? { notebookId, type, checklist: [] } : { notebookId, type },
+    );
     this.all.set(sortActiveNotes([note, ...this.all()]));
     return note;
   }

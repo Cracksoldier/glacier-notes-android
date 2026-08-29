@@ -103,4 +103,41 @@ describe('MarkdownService', () => {
       expect(String(markdown.renderPreview('short'))).not.toContain('…');
     });
   });
+
+  describe('renderInline', () => {
+    it('renders inline emphasis, code and links', () => {
+      const html = markdown.renderInlineToHtml('**milk** and `eggs`');
+
+      expect(html).toContain('<strong>milk</strong>');
+      expect(html).toContain('<code>eggs</code>');
+      expect(markdown.renderInlineToHtml('[x](https://example.com)')).toContain('rel="noopener"');
+    });
+
+    // A checklist item is one line in a row that already has a checkbox beside it.
+    it('leaves block syntax as literal text', () => {
+      const html = markdown.renderInlineToHtml('# Title\n\n- one');
+
+      expect(html).not.toContain('<h1');
+      expect(html).not.toContain('<li');
+      expect(html).toContain('# Title');
+    });
+
+    it('strips scripts and the forbidden tags', () => {
+      const html = markdown.renderInlineToHtml('<script>alert(1)</script><button>x</button>hi');
+
+      expect(html).not.toContain('<script');
+      expect(html).not.toContain('alert(1)');
+      expect(html).not.toContain('<button');
+    });
+
+    it('drops even an app image reference', () => {
+      const id = '3f2504e0-4f89-41d3-9a0c-0305e82c3301';
+
+      expect(markdown.renderInlineToHtml(`![alt](glacier-img://${id})`)).not.toContain('<img');
+    });
+
+    it('drops a javascript: href', () => {
+      expect(markdown.renderInlineToHtml('[x](javascript:alert(1))')).not.toContain('javascript:');
+    });
+  });
 });

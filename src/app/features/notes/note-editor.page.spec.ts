@@ -104,6 +104,43 @@ describe('NoteEditorPage', () => {
     field.dispatchEvent(new Event('input'));
   }
 
+  function addItem(fixture: ComponentFixture<NoteEditorPage>): void {
+    (fixture.nativeElement.querySelector('.checklist__add') as HTMLButtonElement).click();
+    fixture.detectChanges();
+  }
+
+  function typeItem(fixture: ComponentFixture<NoteEditorPage>, index: number, value: string): void {
+    const rows = fixture.nativeElement.querySelectorAll(
+      '.checklist__text',
+    ) as NodeListOf<HTMLInputElement>;
+    const field = rows[index];
+    if (!field) {
+      throw new Error(`no checklist row at ${index}`);
+    }
+    field.value = value;
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  }
+
+  function itemValues(fixture: ComponentFixture<NoteEditorPage>): string[] {
+    return [
+      ...(fixture.nativeElement.querySelectorAll(
+        '.checklist__text',
+      ) as NodeListOf<HTMLInputElement>),
+    ].map((field) => field.value);
+  }
+
+  /**
+   * By class, not by `aria-label`: `ion-button` moves that attribute onto its
+   * inner native button once the custom element hydrates, so an attribute
+   * selector on the host passes or fails depending on timing.
+   */
+  async function convert(fixture: ComponentFixture<NoteEditorPage>): Promise<void> {
+    (fixture.nativeElement.querySelector('.editor__convert') as HTMLElement).click();
+    await settle();
+    fixture.detectChanges();
+  }
+
   it('renders a not-found state for an id that no longer exists', async () => {
     const fixture = await open({ id: 'ffffffff-0000-0000-0000-000000000000' } as Note);
 
@@ -111,7 +148,7 @@ describe('NoteEditorPage', () => {
   });
 
   it('loads the stored title and body', async () => {
-    const note = await store.createTextNote();
+    const note = await store.createNote('text');
     await store.save(note.id, { title: 'Groceries', content: '- milk' });
 
     const fixture = await open(note);
@@ -122,7 +159,7 @@ describe('NoteEditorPage', () => {
 
   describe('autosave', () => {
     it('waits out the debounce before writing, then writes once', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
       vi.useFakeTimers();
       const update = vi.spyOn(repositories.notes, 'update');
@@ -137,7 +174,7 @@ describe('NoteEditorPage', () => {
     });
 
     it('restarts the timer on the next keystroke', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
       vi.useFakeTimers();
       const update = vi.spyOn(repositories.notes, 'update');
@@ -155,7 +192,7 @@ describe('NoteEditorPage', () => {
     });
 
     it('flushes a pending change when the page is left', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
 
       type(fixture, '.editor__title', 'Groceries');
@@ -166,7 +203,7 @@ describe('NoteEditorPage', () => {
     });
 
     it('flushes when the app is backgrounded', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
 
       type(fixture, '.editor__content', 'typed then home key');
@@ -177,7 +214,7 @@ describe('NoteEditorPage', () => {
     });
 
     it('surfaces a failed write without clearing the text', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
       vi.spyOn(repositories.notes, 'update').mockRejectedValue(new Error('no space'));
 
@@ -193,7 +230,7 @@ describe('NoteEditorPage', () => {
 
   describe('discarding empty notes', () => {
     it('purges a note this session created and left blank', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note, true);
 
       fixture.componentInstance.ionViewWillLeave();
@@ -204,7 +241,7 @@ describe('NoteEditorPage', () => {
     });
 
     it('keeps a note this session created once it has any text', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note, true);
 
       type(fixture, '.editor__title', 'Groceries');
@@ -215,7 +252,7 @@ describe('NoteEditorPage', () => {
     });
 
     it('keeps a pre-existing note the user empties', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       await store.save(note.id, { title: 'Groceries', content: '- milk' });
       const fixture = await open(note);
 
@@ -226,11 +263,158 @@ describe('NoteEditorPage', () => {
 
       expect(await repositories.notes.find(note.id)).toBeDefined();
     });
+
+    // A checklist is created with one blank row waiting for text, so "no items"
+    // is the wrong emptiness test.
+    it('purges a created checklist whose rows were never filled in', async () => {
+      const note = await store.createNote('checklist');
+      const fixture = await open(note, true);
+
+      addItem(fixture);
+      fixture.componentInstance.ionViewWillLeave();
+      await settle();
+
+      expect(await repositories.notes.find(note.id)).toBeUndefined();
+    });
+
+    it('keeps a created checklist once a row has text', async () => {
+      const note = await store.createNote('checklist');
+      const fixture = await open(note, true);
+
+      addItem(fixture);
+      type(fixture, '.checklist__text', 'milk');
+      fixture.componentInstance.ionViewWillLeave();
+      await settle();
+
+      expect(await repositories.notes.find(note.id)).toBeDefined();
+    });
+  });
+
+  describe('checklist notes', () => {
+    it('shows the checklist instead of the markdown editor', async () => {
+      const note = await store.createNote('checklist');
+      const fixture = await open(note);
+
+      expect(fixture.nativeElement.querySelector('app-checklist-editor')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('.editor__content')).toBeNull();
+      expect(fixture.nativeElement.querySelector('app-markdown-toolbar')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.editor__preview-toggle')).toBeNull();
+    });
+
+    it('loads stored items in sort order', async () => {
+      const note = await store.createNote('checklist');
+      await store.save(note.id, {
+        checklist: [
+          { id: 'a', text: 'milk', checked: false, sortOrder: 0 },
+          { id: 'b', text: 'eggs', checked: true, sortOrder: 1 },
+        ],
+      });
+      const fixture = await open(note);
+
+      expect(itemValues(fixture)).toEqual(['milk', 'eggs']);
+    });
+
+    /**
+     * The patch is key-presence based, so writing `content` alongside would
+     * leave stale Markdown behind the items and resurface it on a convert.
+     */
+    it('autosaves the items and never writes content', async () => {
+      const note = await store.createNote('checklist');
+      const fixture = await open(note);
+      vi.useFakeTimers();
+      const update = vi.spyOn(repositories.notes, 'update');
+
+      addItem(fixture);
+      type(fixture, '.checklist__text', 'milk');
+      await vi.advanceTimersByTimeAsync(500);
+
+      expect(update.mock.calls.every(([, patch]) => !('content' in patch))).toBe(true);
+      const stored = await repositories.notes.get(note.id);
+      expect(stored.checklist?.map((item) => [item.text, item.sortOrder])).toEqual([['milk', 0]]);
+    });
+
+    it('keeps item ids and order across a reload', async () => {
+      const note = await store.createNote('checklist');
+      const fixture = await open(note);
+
+      addItem(fixture);
+      typeItem(fixture, 0, 'milk');
+      addItem(fixture);
+      typeItem(fixture, 1, 'eggs');
+      fixture.componentInstance.ionViewWillLeave();
+      await settle();
+
+      const stored = (await repositories.notes.get(note.id)).checklist ?? [];
+      expect(stored.map((item) => [item.text, item.sortOrder])).toEqual([
+        ['milk', 0],
+        ['eggs', 1],
+      ]);
+
+      const reopened = await open(note);
+      expect(itemValues(reopened)).toEqual(['milk', 'eggs']);
+      expect((await repositories.notes.get(note.id)).checklist?.map((item) => item.id)).toEqual(
+        stored.map((item) => item.id),
+      );
+    });
+  });
+
+  describe('converting between note types', () => {
+    it('turns markdown task lines into items in one write', async () => {
+      const note = await store.createNote('text');
+      await store.save(note.id, { content: '- [x] milk\n- eggs' });
+      const fixture = await open(note);
+
+      await convert(fixture);
+
+      const stored = await repositories.notes.get(note.id);
+      expect(stored.type).toBe('checklist');
+      expect(stored.content).toBe('');
+      expect(stored.checklist?.map((item) => [item.text, item.checked])).toEqual([
+        ['milk', true],
+        ['eggs', false],
+      ]);
+      expect(fixture.nativeElement.querySelector('app-checklist-editor')).not.toBeNull();
+    });
+
+    it('turns items back into task lines and drops the rows', async () => {
+      const note = await store.createNote('checklist');
+      await store.save(note.id, {
+        checklist: [
+          { id: 'a', text: 'milk', checked: true, sortOrder: 0 },
+          { id: 'b', text: 'eggs', checked: false, sortOrder: 1 },
+        ],
+      });
+      const fixture = await open(note);
+
+      await convert(fixture);
+
+      const stored = await repositories.notes.get(note.id);
+      expect(stored.type).toBe('text');
+      expect(stored.content).toBe('- [x] milk\n- [ ] eggs');
+      expect(stored.checklist ?? []).toEqual([]);
+      expect(fixture.nativeElement.querySelector('.editor__content').value).toBe(
+        '- [x] milk\n- [ ] eggs',
+      );
+    });
+
+    // Same `updatedAt` hazard as the notebook chip, and worse here: a debounce
+    // landing after the convert would write the pre-convert body back.
+    it('flushes a pending edit before converting', async () => {
+      const note = await store.createNote('text');
+      const fixture = await open(note);
+
+      type(fixture, '.editor__content', '- [ ] milk');
+      await convert(fixture);
+
+      expect((await repositories.notes.get(note.id)).checklist?.map((i) => i.text)).toEqual([
+        'milk',
+      ]);
+    });
   });
 
   describe('the formatting toolbar', () => {
     it('applies a transform to the selection and keeps the caret on the text', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
       const textarea = fixture.nativeElement.querySelector(
         '.editor__content',
@@ -249,12 +433,10 @@ describe('NoteEditorPage', () => {
     });
 
     it('is disabled in preview mode', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
 
-      (
-        fixture.nativeElement.querySelector('ion-button[aria-label="Preview"]') as HTMLElement
-      ).click();
+      (fixture.nativeElement.querySelector('.editor__preview-toggle') as HTMLElement).click();
       fixture.detectChanges();
 
       expect(fixture.nativeElement.querySelector('button[aria-label="Bold"]').disabled).toBe(true);
@@ -265,7 +447,7 @@ describe('NoteEditorPage', () => {
 
   describe('the notebook chip', () => {
     it('names the notebook the note is in', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
 
       expect(fixture.nativeElement.querySelector('.editor__notebook').textContent).toContain(
@@ -275,7 +457,7 @@ describe('NoteEditorPage', () => {
 
     it('flushes a pending edit before moving, so the move owns the newer updatedAt', async () => {
       const work = await notebooks.create('Work');
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
 
       const writes: string[] = [];
@@ -306,7 +488,7 @@ describe('NoteEditorPage', () => {
     });
 
     it('leaves the note where it is when the sheet is dismissed', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
       const move = vi.spyOn(repositories.notes, 'move');
 
@@ -320,7 +502,7 @@ describe('NoteEditorPage', () => {
   describe('the labels chip', () => {
     it('invites the user to assign a label, then names the ones assigned', async () => {
       const work = await labels.create('Work');
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
       const chip = fixture.nativeElement.querySelector('.editor__labels') as HTMLButtonElement;
 
@@ -339,7 +521,7 @@ describe('NoteEditorPage', () => {
     // timestamp, so a debounced body still in the textarea has to land first.
     it('flushes a pending edit before writing the labels', async () => {
       const work = await labels.create('Work');
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
 
       const writes: string[] = [];
@@ -367,7 +549,7 @@ describe('NoteEditorPage', () => {
     });
 
     it('leaves the labels alone when the alert is dismissed', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       const fixture = await open(note);
       const setLabels = vi.spyOn(repositories.notes, 'setLabels');
 
@@ -380,14 +562,12 @@ describe('NoteEditorPage', () => {
 
   describe('preview links', () => {
     it('opens http(s) links out of the app rather than navigating the WebView', async () => {
-      const note = await store.createTextNote();
+      const note = await store.createNote('text');
       await store.save(note.id, { content: '[docs](https://example.com/)' });
       const fixture = await open(note);
       const open_ = vi.spyOn(window, 'open').mockReturnValue(null);
 
-      (
-        fixture.nativeElement.querySelector('ion-button[aria-label="Preview"]') as HTMLElement
-      ).click();
+      (fixture.nativeElement.querySelector('.editor__preview-toggle') as HTMLElement).click();
       fixture.detectChanges();
 
       const anchor = fixture.nativeElement.querySelector('.editor__preview a') as HTMLAnchorElement;

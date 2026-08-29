@@ -36,6 +36,7 @@ export class SettingsStore {
     (s) => s.lastSelectedNotebookId,
   );
   readonly trashAutoPurgeDays: Signal<number> = this.field((s) => s.trashAutoPurgeDays);
+  readonly moveCheckedToBottom: Signal<boolean> = this.field((s) => s.moveCheckedToBottom);
 
   constructor() {
     effect(() => {
@@ -84,6 +85,10 @@ export class SettingsStore {
     this.state.update((s) => ({ ...s, trashAutoPurgeDays }));
   }
 
+  setMoveCheckedToBottom(moveCheckedToBottom: boolean): void {
+    this.state.update((s) => ({ ...s, moveCheckedToBottom }));
+  }
+
   snapshot(): Settings {
     const state = this.state();
     return {
@@ -93,6 +98,7 @@ export class SettingsStore {
       sortOrder: state.sortOrder,
       lastSelectedNotebookId: state.lastSelectedNotebookId,
       trashAutoPurgeDays: state.trashAutoPurgeDays,
+      moveCheckedToBottom: state.moveCheckedToBottom,
     };
   }
 

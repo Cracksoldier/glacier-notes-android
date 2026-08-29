@@ -171,7 +171,7 @@ interface ImageAsset { id; mimeType; fileName? }
 | --- | --- | --- |
 | `theme` | `'dark'` | port directly |
 | `language` | `de` if OS locale starts with `de`, else `en` | port directly |
-| `moveCheckedToBottom` | `false` | port (M09 completed-item display) |
+| `moveCheckedToBottom` | `false` | ported in M09 — see `docs/checklists.md` |
 | `closeToTray` | `true` | desktop-only, drop |
 | `quickNoteShortcut` | `'CommandOrControl+Alt+G'` | desktop-only, drop |
 | `trashAutoPurgeDays` | `30` | port (see §6) |
