@@ -18,6 +18,7 @@ import {
   IonToolbar,
 } from '@ionic/angular';
 
+import { DatabaseService } from '../../core/database/database.service';
 import { I18nService } from '../../core/localization/i18n.service';
 import type { LanguageCode, ThemeMode } from '../../core/preferences/settings.model';
 import { SettingsStore } from '../../core/preferences/settings.store';
@@ -166,6 +167,20 @@ import { NotebooksStore } from '../notebooks/notebooks.store';
         </ion-item>
       </ion-list>
 
+      @if (database.status() === 'error') {
+        <ion-list [inset]="true">
+          <ion-list-header>{{ i18n.t('settings.diagnostics') }}</ion-list-header>
+          <ion-item lines="none">
+            <ion-label class="settings__sample">{{ i18n.t('settings.databaseFailed') }}</ion-label>
+          </ion-item>
+          @if (database.error(); as message) {
+            <ion-item lines="none">
+              <ion-note class="settings__sample">{{ message }}</ion-note>
+            </ion-item>
+          }
+        </ion-list>
+      }
+
       <ion-list [inset]="true">
         <ion-item lines="none">
           <ion-note>{{ i18n.t('settings.localOnly') }}</ion-note>
@@ -184,6 +199,13 @@ export class SettingsPage {
   readonly theme = inject(ThemeService);
   readonly settings = inject(SettingsStore);
   readonly notebooks = inject(NotebooksStore);
+
+  /**
+   * The one place the engine's own message is shown. The list pages stay generic,
+   * which keeps `core/database` out of the note features while still leaving the
+   * user somewhere to find out *why* every list is empty.
+   */
+  readonly database = inject(DatabaseService);
 
   /** Shows what the language choice does to dates before any note exists. */
   readonly sampleDate = new Date().toISOString();

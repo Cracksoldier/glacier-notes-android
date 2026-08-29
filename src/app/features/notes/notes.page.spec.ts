@@ -1,6 +1,6 @@
 import { provideRouter } from '@angular/router';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MemoryPreferencesAdapter } from '../../core/preferences/memory-preferences.adapter';
 import { PREFERENCES_ADAPTER } from '../../core/preferences/preferences-adapter';
@@ -24,6 +24,7 @@ describe('NotesPage', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await repositories.adapter.close();
   });
 
@@ -49,6 +50,31 @@ describe('NotesPage', () => {
 
     expect(host.querySelector('app-empty-state')?.textContent).toContain('No notes yet');
     expect(host.querySelectorAll('app-note-card')).toHaveLength(0);
+  });
+
+  // A failed read also empties the list, and "you have no notes" is the worst
+  // possible reading of a database that could not be opened.
+  it('distinguishes a failed load from an empty one, and retries', async () => {
+    await repositories.notes.create({
+      notebookId: repositories.defaultNotebookId,
+      type: 'text',
+      title: 'Groceries',
+    });
+    const list = vi.spyOn(repositories.notes, 'list').mockRejectedValue(new Error('disk gone'));
+
+    const fixture = await render();
+    const host: HTMLElement = fixture.nativeElement;
+
+    expect(host.textContent).toContain('Could not load');
+    expect(host.textContent).not.toContain('No notes yet');
+
+    list.mockRestore();
+    fixture.componentInstance.retry();
+    await TestBed.inject(NotesStore).load();
+    fixture.detectChanges();
+
+    expect(host.textContent).not.toContain('Could not load');
+    expect(host.textContent).toContain('Groceries');
   });
 
   it('renders a card per note, titles included', async () => {

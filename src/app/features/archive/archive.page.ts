@@ -13,7 +13,7 @@ import { I18nService } from '../../core/localization/i18n.service';
 import type { Note } from '../../core/models/note';
 import { SettingsStore } from '../../core/preferences/settings.store';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
-import { faBoxArchive } from '../../shared/utilities/glacier-icons';
+import { faBoxArchive, faTriangleExclamation } from '../../shared/utilities/glacier-icons';
 import { NoteListComponent } from '../notes/note-list.component';
 import { NotePrompts } from '../notes/note-prompts';
 import { NotesStore } from '../notes/notes.store';
@@ -47,7 +47,15 @@ import { NotesStore } from '../notes/notes.store';
     </ion-header>
 
     <ion-content>
-      @if (isEmpty()) {
+      @if (hasError()) {
+        <app-empty-state
+          [icon]="errorIcon"
+          [title]="i18n.t('error.loadTitle')"
+          [message]="i18n.t('error.loadNotes')"
+          [actionLabel]="i18n.t('error.retry')"
+          (action)="retry()"
+        />
+      } @else if (isEmpty()) {
         <app-empty-state
           [icon]="emptyIcon"
           [title]="i18n.t('sidebar.archive')"
@@ -72,9 +80,13 @@ export class ArchivePage {
   private readonly router = inject(Router);
 
   readonly emptyIcon = faBoxArchive;
+  readonly errorIcon = faTriangleExclamation;
 
+  protected readonly hasError = computed(() => this.store.status() === 'error');
+
+  /** `'ready'`, not "not loading" — see `NotesPage.isEmpty`. */
   protected readonly isEmpty = computed(
-    () => this.store.status() !== 'loading' && this.store.notes().length === 0,
+    () => this.store.status() === 'ready' && this.store.notes().length === 0,
   );
 
   /**
@@ -84,6 +96,10 @@ export class ArchivePage {
    */
   ionViewWillEnter(): void {
     void this.store.setView({ kind: 'archived' });
+  }
+
+  retry(): void {
+    void this.store.load();
   }
 
   open(id: string): void {

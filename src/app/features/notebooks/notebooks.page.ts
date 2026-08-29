@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import {
@@ -20,7 +20,13 @@ import {
 import { I18nService } from '../../core/localization/i18n.service';
 import type { Notebook } from '../../core/models/notebook';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
-import { faBook, faEllipsisVertical, faPlus, faStar } from '../../shared/utilities/glacier-icons';
+import {
+  faBook,
+  faEllipsisVertical,
+  faPlus,
+  faStar,
+  faTriangleExclamation,
+} from '../../shared/utilities/glacier-icons';
 import { NotebookPrompts } from './notebook-prompts';
 import { NotebooksStore } from './notebooks.store';
 
@@ -55,7 +61,15 @@ import { NotebooksStore } from './notebooks.store';
     </ion-header>
 
     <ion-content>
-      @if (store.notebooks().length === 0) {
+      @if (hasError()) {
+        <app-empty-state
+          [icon]="errorIcon"
+          [title]="i18n.t('error.loadTitle')"
+          [message]="i18n.t('error.loadNotebooks')"
+          [actionLabel]="i18n.t('error.retry')"
+          (action)="retry()"
+        />
+      } @else if (isEmpty()) {
         <app-empty-state [icon]="bookIcon" [title]="i18n.t('notebook.none')" />
       } @else {
         <ion-list [inset]="true">
@@ -108,6 +122,22 @@ export class NotebooksPage {
   readonly addIcon = faPlus;
   readonly actionsIcon = faEllipsisVertical;
   readonly defaultIcon = faStar;
+  readonly errorIcon = faTriangleExclamation;
+
+  protected readonly hasError = computed(() => this.store.status() === 'error');
+
+  /**
+   * Gated on `'ready'` rather than on the array alone. `NotebooksStore` is loaded
+   * once for the session, so the page used to render "No notebooks yet" for the
+   * whole of that load, and again permanently if it failed.
+   */
+  protected readonly isEmpty = computed(
+    () => this.store.status() === 'ready' && this.store.notebooks().length === 0,
+  );
+
+  retry(): void {
+    void this.store.load();
+  }
 
   open(notebook: Notebook): void {
     void this.router.navigate(['/notebooks', notebook.id]);

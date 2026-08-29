@@ -230,6 +230,49 @@ describe('NoteEditorPage', () => {
       expect(fixture.nativeElement.textContent).toContain('Could not save');
       expect(fixture.nativeElement.querySelector('.editor__content').value).toBe('still here');
     });
+
+    // The banner promises the text is still here. Clearing `dirty` before the
+    // write landed made that true only until the user backed out of the page:
+    // `leave()`'s own flush then returned early and the edit went nowhere.
+    it('keeps a failed edit pending so the next flush still writes it', async () => {
+      const note = await store.createNote('text');
+      const fixture = await open(note);
+      const update = vi
+        .spyOn(repositories.notes, 'update')
+        .mockRejectedValueOnce(new Error('no space'));
+
+      type(fixture, '.editor__content', 'nearly lost');
+      fixture.componentInstance.ionViewWillLeave();
+      await settle();
+      expect((await repositories.notes.get(note.id)).content).toBe('');
+
+      update.mockRestore();
+      background();
+      await settle();
+
+      expect((await repositories.notes.get(note.id)).content).toBe('nearly lost');
+    });
+
+    // `saveFailed` is root-scoped, so it would otherwise stand over the next note.
+    it('drops a previous note failure when another note opens', async () => {
+      const failing = await store.createNote('text');
+      const fixture = await open(failing);
+      const update = vi
+        .spyOn(repositories.notes, 'update')
+        .mockRejectedValue(new Error('no space'));
+
+      type(fixture, '.editor__content', 'lost');
+      fixture.componentInstance.ionViewWillLeave();
+      await settle();
+      expect(store.saveFailed()).toBe(true);
+
+      update.mockRestore();
+      const other = await store.createNote('text');
+      const next = await open(other);
+
+      expect(store.saveFailed()).toBe(false);
+      expect(next.nativeElement.textContent).not.toContain('Could not save');
+    });
   });
 
   describe('discarding empty notes', () => {

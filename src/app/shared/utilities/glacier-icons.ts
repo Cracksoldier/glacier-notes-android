@@ -44,6 +44,7 @@ export {
   faTableCells,
   faTag,
   faThumbtack,
+  faTriangleExclamation,
   faTrashArrowUp,
   faTrashCan,
   faXmark,

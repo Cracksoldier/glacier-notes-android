@@ -1,6 +1,7 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { DatabaseService } from '../../core/database/database.service';
 import { MemoryPreferencesAdapter } from '../../core/preferences/memory-preferences.adapter';
 import { PREFERENCES_ADAPTER } from '../../core/preferences/preferences-adapter';
 import { SettingsStore } from '../../core/preferences/settings.store';
@@ -37,6 +38,7 @@ describe('SettingsPage', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await repositories.adapter.close();
   });
 
@@ -105,5 +107,25 @@ describe('SettingsPage', () => {
     const host: HTMLElement = fixture.nativeElement;
 
     expect(host.textContent).toContain('.glacier.json');
+  });
+
+  describe('the database diagnostic', () => {
+    it('is absent while the database is fine', () => {
+      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Diagnostics');
+    });
+
+    // Every list page shows the same generic message, so this is the only place
+    // the engine's own words reach the user.
+    it('names the failure when the database could not be opened', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      vi.spyOn(repositories.adapter, 'open').mockRejectedValue(new Error('file is not a database'));
+
+      await TestBed.inject(DatabaseService).init();
+      fixture.detectChanges();
+
+      const host: HTMLElement = fixture.nativeElement;
+      expect(host.textContent).toContain('Diagnostics');
+      expect(host.textContent).toContain('file is not a database');
+    });
   });
 });

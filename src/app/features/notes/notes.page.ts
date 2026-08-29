@@ -26,6 +26,7 @@ import {
   faMagnifyingGlass,
   faPlus,
   faTableCells,
+  faTriangleExclamation,
 } from '../../shared/utilities/glacier-icons';
 import { NoteListComponent } from './note-list.component';
 import { NotePrompts } from './note-prompts';
@@ -72,7 +73,15 @@ import { NotesStore } from './notes.store';
     </ion-header>
 
     <ion-content>
-      @if (isEmpty()) {
+      @if (hasError()) {
+        <app-empty-state
+          [icon]="errorIcon"
+          [title]="i18n.t('error.loadTitle')"
+          [message]="i18n.t('error.loadNotes')"
+          [actionLabel]="i18n.t('error.retry')"
+          (action)="retry()"
+        />
+      } @else if (isEmpty()) {
         <app-empty-state
           [icon]="emptyIcon"
           [title]="i18n.t('grid.noNotes')"
@@ -128,14 +137,22 @@ export class NotesPage {
   readonly labelId = input<string | undefined>(undefined);
 
   readonly emptyIcon = faFileLines;
+  readonly errorIcon = faTriangleExclamation;
   readonly searchIcon = faMagnifyingGlass;
   readonly addIcon = faPlus;
   readonly checklistIcon = faListCheck;
   readonly gridIcon = faTableCells;
   readonly listIcon = faBars;
 
+  protected readonly hasError = computed(() => this.store.status() === 'error');
+
+  /**
+   * `'ready'` rather than "not loading": a failed load also empties the list, and
+   * telling the user they have no notes is the worst possible reading of a
+   * database that could not be opened.
+   */
   protected readonly isEmpty = computed(
-    () => this.store.status() !== 'loading' && this.store.notes().length === 0,
+    () => this.store.status() === 'ready' && this.store.notes().length === 0,
   );
 
   /** Falls back to empty while the notebook or label list is still loading. */
@@ -172,6 +189,10 @@ export class NotesPage {
 
   ionViewWillEnter(): void {
     void this.store.setView(this.viewFor(this.notebookId(), this.labelId()));
+  }
+
+  retry(): void {
+    void this.store.load();
   }
 
   toggleLayout(): void {

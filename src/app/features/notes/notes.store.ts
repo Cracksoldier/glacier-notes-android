@@ -59,6 +59,12 @@ export class NotesStore {
       return Promise.resolve();
     }
     this.currentView.set(view);
+    // Dropped here rather than in `load()`: this store is shared by the notes,
+    // archive and trash pages, so holding the old view's rows would render them
+    // inside the new page — wired to the new page's actions — for as long as the
+    // load takes. A same-view refresh must *not* blank, or every archive, trash
+    // and label action would flash the list away and back.
+    this.all.set([]);
     return this.load();
   }
 
@@ -71,6 +77,9 @@ export class NotesStore {
     } catch {
       this.all.set([]);
       this.state.set('error');
+      // Cleared, or `setView`'s guard would treat the failed view as held and
+      // never load it again — no error, no retry, for the rest of the session.
+      this.loaded = false;
     }
   }
 
@@ -93,13 +102,19 @@ export class NotesStore {
   /**
    * Persists and replaces in place. Re-sorting here is what lifts a just-edited
    * note back to the top of the list without a second database round-trip.
+   *
+   * Reports whether the write landed instead of rethrowing, so the editor can
+   * keep the edit pending and try again. Rethrowing is reserved for the explicit
+   * actions below, which have a user waiting on them.
    */
-  async save(id: string, patch: NoteUpdatePatch): Promise<void> {
+  async save(id: string, patch: NoteUpdatePatch): Promise<boolean> {
     try {
       this.replace(await this.notesRepository.update(id, patch));
       this.failedSave.set(false);
+      return true;
     } catch {
       this.failedSave.set(true);
+      return false;
     }
   }
 

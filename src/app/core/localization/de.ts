@@ -25,6 +25,12 @@ export const de: Record<TranslationKey, string> = {
   'grid.noNotesHint': 'Erstelle eine Notiz, um loszulegen.',
   'grid.nothingArchivedHint': 'Archivierte Notizen erscheinen hier.',
   'grid.trashEmptyHint': 'Gelöschte Notizen erscheinen hier.',
+  'error.loadTitle': 'Laden fehlgeschlagen',
+  'error.loadNotes': 'Deine Notizen sind weiterhin auf diesem Gerät. Es wurde nichts gelöscht.',
+  'error.loadNotebooks':
+    'Deine Notizbücher sind weiterhin auf diesem Gerät. Es wurde nichts gelöscht.',
+  'error.retry': 'Erneut versuchen',
+
   'grid.pinned': 'Angeheftet',
   'grid.others': 'Weitere',
 
@@ -153,6 +159,10 @@ export const de: Record<TranslationKey, string> = {
   'settings.trashAutoPurgeNever': 'Nie',
   'settings.trashAutoPurgeDays': '{count} Tagen',
   'settings.trashAutoPurgeHint': 'Wird bei jedem Start der App einmal geprüft.',
+
+  'settings.diagnostics': 'Diagnose',
+  'settings.databaseFailed':
+    'Die Datenbank konnte nicht geöffnet werden. Ein Neustart der App hilft möglicherweise.',
 
   'a11y.openMenu': 'Navigationsmenü öffnen',
   'a11y.searchNotes': 'Notizen durchsuchen',

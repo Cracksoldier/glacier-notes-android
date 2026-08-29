@@ -591,6 +591,9 @@ export class NoteEditorPage implements OnDestroy {
   }
 
   private async loadNote(id: string): Promise<void> {
+    // `saveFailed` is root-scoped, so without this a failure on one note leaves
+    // its banner standing over the next note the user opens.
+    this.store.clearSaveError();
     const note = await this.notes.find(id);
     if (!note) {
       this.status.set('missing');
@@ -614,6 +617,18 @@ export class NoteEditorPage implements OnDestroy {
     this.saveTimer = setTimeout(() => void this.flush(), SAVE_DEBOUNCE_MS);
   }
 
+  /**
+   * `dirty` survives a failed write. Clearing it up front discarded the edit:
+   * `leave()`'s own flush then returned early on `!dirty`, so the banner
+   * promising the text is still here was only true until the user backed out of
+   * the page.
+   *
+   * A failure deliberately arms no retry timer of its own. Leaving `dirty` set
+   * is enough — the next keystroke's debounce, the next backgrounding, a move or
+   * a label change, and `leave()` itself all flush again. A self-rearming timer
+   * would instead retry every 500ms forever against a database that is not
+   * coming back, including after `ngOnDestroy`.
+   */
   private async flush(): Promise<void> {
     if (this.saveTimer !== null) {
       clearTimeout(this.saveTimer);
@@ -622,15 +637,17 @@ export class NoteEditorPage implements OnDestroy {
     if (!this.dirty || this.status() !== 'ready') {
       return;
     }
-    this.dirty = false;
     // A checklist note must not write `content`: the patch is key-presence
     // based, so sending both would leave stale Markdown behind the items.
-    await this.store.save(
+    const saved = await this.store.save(
       this.id(),
       this.isChecklist()
         ? { title: this.title(), checklist: this.items() }
         : { title: this.title(), content: this.content() },
     );
+    if (saved) {
+      this.dirty = false;
+    }
   }
 
   /**

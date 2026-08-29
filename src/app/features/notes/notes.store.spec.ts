@@ -169,10 +169,19 @@ describe('NotesStore', () => {
       const note = await store.createNote('text');
       vi.spyOn(repositories.notes, 'update').mockRejectedValue(new Error('no space'));
 
-      await store.save(note.id, { title: 'lost?' });
+      const saved = await store.save(note.id, { title: 'lost?' });
 
+      expect(saved).toBe(false);
       expect(store.saveFailed()).toBe(true);
       expect(store.notes()).toHaveLength(1);
+    });
+
+    // The editor keeps its own `dirty` flag set on `false` so the edit survives
+    // to the next flush instead of being discarded on exit.
+    it('reports whether the write landed', async () => {
+      const note = await store.createNote('text');
+
+      await expect(store.save(note.id, { title: 'kept' })).resolves.toBe(true);
     });
 
     it('clears the failure flag on the next successful write', async () => {
@@ -319,6 +328,50 @@ describe('NotesStore', () => {
 
       expect(store.status()).toBe('ready');
       expect(store.notes()).toHaveLength(1);
+    });
+
+    // The store is shared by the notes, archive and trash pages, so rows held
+    // over the load would render inside the new page, wired to its actions.
+    it('does not hold the old view rows while the new view loads', async () => {
+      await repositories.notes.create({
+        notebookId: repositories.defaultNotebookId,
+        type: 'text',
+      });
+      await store.setView({ kind: 'active' });
+
+      const pending = store.setView({ kind: 'trashed' });
+
+      expect(store.notes()).toEqual([]);
+      await pending;
+    });
+
+    // A same-view refresh backs every archive, trash and label action; blanking
+    // there would flash the list away and back on each one.
+    it('does not blank the list on a refresh of the view it already holds', async () => {
+      await repositories.notes.create({
+        notebookId: repositories.defaultNotebookId,
+        type: 'text',
+      });
+      await store.setView({ kind: 'active' });
+
+      const pending = store.load();
+
+      expect(store.notes()).toHaveLength(1);
+      await pending;
+    });
+
+    it('retries a view whose load failed rather than treating it as held', async () => {
+      const list = vi
+        .spyOn(repositories.notes, 'list')
+        .mockRejectedValueOnce(new Error('disk gone'));
+
+      await store.setView({ kind: 'archived' });
+      expect(store.status()).toBe('error');
+
+      await store.setView({ kind: 'archived' });
+
+      expect(list).toHaveBeenCalledTimes(2);
+      expect(store.status()).toBe('ready');
     });
   });
 

@@ -30,6 +30,14 @@ export const en = {
   'grid.pinned': 'Pinned',
   'grid.others': 'Others',
 
+  // android: the desktop has no load-failure state at all — it renders an empty
+  // list and says nothing. On a phone the database is the only copy, so a
+  // failure must not look like "you have no notes".
+  'error.loadTitle': 'Could not load',
+  'error.loadNotes': 'Your notes are still on this device. Nothing has been deleted.',
+  'error.loadNotebooks': 'Your notebooks are still on this device. Nothing has been deleted.',
+  'error.retry': 'Try again',
+
   'card.emptyNote': 'Empty note',
   'card.more': '+{count} more',
 
@@ -169,6 +177,12 @@ export const en = {
   'settings.trashAutoPurgeNever': 'Never',
   'settings.trashAutoPurgeDays': '{count} days',
   'settings.trashAutoPurgeHint': 'Checked once each time the app starts.',
+
+  // android: the desktop has no diagnostics surface. This is the one place the
+  // engine's own message is shown, so that a database failure is nameable
+  // rather than just an empty list on every page.
+  'settings.diagnostics': 'Diagnostics',
+  'settings.databaseFailed': 'The database could not be opened. Restarting the app may fix it.',
 
   // android: the desktop is pointer-driven and has no equivalent labels.
   'a11y.openMenu': 'Open navigation menu',
