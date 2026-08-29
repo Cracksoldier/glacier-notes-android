@@ -53,12 +53,17 @@ export async function deleteNotebookRow(adapter: DatabaseAdapter, id: string): P
   await adapter.run('DELETE FROM notebooks WHERE id = ?', [id]);
 }
 
-/** `Math.max(-1, ...sortOrders) + 1`, as `notebook-repo.ts:75` computes it. */
+/**
+ * `Math.max(-1, ...sortOrders) + 1`, as `notebook-repo.ts:75` computes it.
+ *
+ * The clamp covers the empty table *and* a negative `sort_order`, which nothing
+ * writes today but an import carrying the desktop's values could.
+ */
 export async function nextNotebookSortOrder(adapter: DatabaseAdapter): Promise<number> {
   const [row] = await adapter.query<{ highest: number | null }>(
     'SELECT MAX(sort_order) AS highest FROM notebooks',
   );
-  return (row?.highest ?? -1) + 1;
+  return Math.max(-1, row?.highest ?? -1) + 1;
 }
 
 export async function readDefaultNotebookId(adapter: DatabaseAdapter): Promise<string | null> {

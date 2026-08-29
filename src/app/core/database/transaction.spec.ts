@@ -79,6 +79,36 @@ describe('withTransaction', () => {
     expect(await ids()).toEqual(['a']);
   });
 
+  it('releases the connection when BEGIN itself fails, and does not roll back', async () => {
+    let rollbacks = 0;
+    let begins = 0;
+    // Delegating rather than spreading: `adapter` is a class instance, so its
+    // methods live on the prototype and a spread would drop them.
+    const flaky: DatabaseAdapter = {
+      open: () => adapter.open(),
+      close: () => adapter.close(),
+      execute: (statements) => adapter.execute(statements),
+      query: (sql, params) => adapter.query(sql, params),
+      run: (sql, params) => adapter.run(sql, params),
+      beginTransaction: () =>
+        begins++ === 0 ? Promise.reject(new Error('begin failed')) : adapter.beginTransaction(),
+      commitTransaction: () => adapter.commitTransaction(),
+      rollbackTransaction: () => {
+        rollbacks++;
+        return adapter.rollbackTransaction();
+      },
+    };
+
+    await expect(withTransaction(flaky, async () => undefined)).rejects.toThrow('begin failed');
+    expect(rollbacks).toBe(0);
+
+    await withTransaction(flaky, async () => {
+      await adapter.run('INSERT INTO t VALUES (?)', ['a']);
+    });
+
+    expect(await ids()).toEqual(['a']);
+  });
+
   it('surfaces the original error even if the rollback also fails', async () => {
     const broken: DatabaseAdapter = {
       ...adapter,

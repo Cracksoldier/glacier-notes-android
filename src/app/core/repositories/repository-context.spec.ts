@@ -1,7 +1,13 @@
+import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SqlValue } from '../database/sql-value';
-import { ConstraintViolationError, EntityNotFoundError } from './repository-errors';
+import { QUEUE_STALL_TIMEOUT_MS, RepositoryContext } from './repository-context';
+import {
+  ConstraintViolationError,
+  EntityNotFoundError,
+  RepositoryDeadlockError,
+} from './repository-errors';
 import { createTestRepositories, type TestRepositories } from './testing';
 
 describe('RepositoryContext', () => {
@@ -12,6 +18,7 @@ describe('RepositoryContext', () => {
   });
 
   afterEach(async () => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     await repos.adapter.close();
   });
@@ -74,6 +81,43 @@ describe('RepositoryContext', () => {
       ConstraintViolationError,
     );
     await expect(repos.notes.get(crypto.randomUUID())).rejects.toBeInstanceOf(EntityNotFoundError);
+  });
+
+  // Re-entering the context queues an operation behind itself, which without the
+  // watchdog hangs forever with no error anywhere. M12's bulk import is exactly
+  // where the `*-writes.ts` convention that prevents this gets broken.
+  it('turns a re-entrant call into a named error rather than a silent hang', async () => {
+    vi.useFakeTimers();
+    const context = TestBed.inject(RepositoryContext);
+
+    const outer = context.read('outer', async () => {
+      await context.read('inner', () => Promise.resolve('never'));
+      return 'unreachable';
+    });
+
+    await vi.advanceTimersByTimeAsync(QUEUE_STALL_TIMEOUT_MS);
+
+    await expect(outer).rejects.toBeInstanceOf(RepositoryDeadlockError);
+    await expect(outer).rejects.toMatchObject({ blocked: 'inner', running: 'outer' });
+  });
+
+  it('does not trip the watchdog on an operation that is merely slow', async () => {
+    vi.useFakeTimers();
+    const context = TestBed.inject(RepositoryContext);
+
+    let release: () => void = () => undefined;
+    const slow = context.read('slow', () => {
+      return new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    });
+    const queued = context.read('queued', () => Promise.resolve('done'));
+
+    await vi.advanceTimersByTimeAsync(QUEUE_STALL_TIMEOUT_MS - 1);
+    release();
+
+    await expect(slow).resolves.toBeUndefined();
+    await expect(queued).resolves.toBe('done');
   });
 
   it('names the operation on the error it wraps', async () => {

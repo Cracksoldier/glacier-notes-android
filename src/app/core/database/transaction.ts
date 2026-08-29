@@ -30,18 +30,23 @@ export async function withTransaction<T>(
   }
 
   open.add(adapter);
-  await adapter.beginTransaction();
   try {
-    const result = await work();
-    await adapter.commitTransaction();
-    return result;
-  } catch (error) {
+    // Inside the outer `try` so a BEGIN that rejects still releases the WeakSet
+    // entry. Leaking it would make every later write on this connection throw
+    // NestedTransactionError until the app restarts.
+    await adapter.beginTransaction();
     try {
-      await adapter.rollbackTransaction();
-    } catch {
-      // Swallowed deliberately — see above.
+      const result = await work();
+      await adapter.commitTransaction();
+      return result;
+    } catch (error) {
+      try {
+        await adapter.rollbackTransaction();
+      } catch {
+        // Swallowed deliberately — see above.
+      }
+      throw error;
     }
-    throw error;
   } finally {
     open.delete(adapter);
   }

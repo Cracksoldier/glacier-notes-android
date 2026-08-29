@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 
 import type { Label } from '../../core/models/label';
-import { LabelRepository } from '../../core/repositories/label.repository';
+import { compareLabels, LabelRepository } from '../../core/repositories/label.repository';
 
 export type LabelsStatus = 'loading' | 'ready' | 'error';
 
@@ -61,7 +61,7 @@ export class LabelsStore {
   }
 }
 
-/** Mirrors `LabelRepository.list`, which sorts by `localeCompare` rather than in SQL. */
+/** Shares `LabelRepository`'s comparator rather than restating it, so the two cannot drift. */
 function sorted(labels: readonly Label[]): readonly Label[] {
-  return [...labels].sort((a, b) => a.name.localeCompare(b.name));
+  return [...labels].sort(compareLabels);
 }

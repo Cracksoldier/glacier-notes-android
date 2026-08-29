@@ -47,6 +47,28 @@ export class ConstraintViolationError extends RepositoryError {
   }
 }
 
+/**
+ * The queue never advanced. Raised by `RepositoryContext`'s watchdog, and in
+ * practice always the same bug: a `read`/`write` callback re-entered the context,
+ * so its own operation is queued behind itself and neither can ever run.
+ *
+ * It carries both operation names because that pair is the whole diagnosis —
+ * `blocked` is what re-entered and `running` is what it re-entered from.
+ */
+export class RepositoryDeadlockError extends RepositoryError {
+  constructor(
+    readonly blocked: string,
+    readonly running: string,
+  ) {
+    super(
+      `Operation ${blocked} waited behind ${running} without the queue advancing. ` +
+        'A read or write callback most likely re-entered RepositoryContext; ' +
+        'bulk work must compose the *-writes.ts primitives inside one write() instead.',
+      'RepositoryDeadlockError',
+    );
+  }
+}
+
 export class NotebookNotEmptyError extends RepositoryError {
   constructor(
     readonly notebookId: string,

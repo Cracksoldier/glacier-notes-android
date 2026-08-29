@@ -35,6 +35,19 @@ describe('LabelRepository', () => {
     expect(await repos.labels.list()).toHaveLength(2);
   });
 
+  // The `SELECT` has no `ORDER BY`, so same-named labels arrive in whatever order
+  // the engine chose. Without the id tiebreaker they can swap between reads.
+  it('gives same-named labels a stable order across reads', async () => {
+    await repos.labels.create('Work');
+    await repos.labels.create('Work');
+    await repos.labels.create('Work');
+
+    const first = (await repos.labels.list()).map((label) => label.id);
+
+    expect(first).toEqual([...first].sort((a, b) => a.localeCompare(b)));
+    expect((await repos.labels.list()).map((label) => label.id)).toEqual(first);
+  });
+
   it('renames without inventing a timestamp', async () => {
     const label = await repos.labels.create('Wrok');
 
