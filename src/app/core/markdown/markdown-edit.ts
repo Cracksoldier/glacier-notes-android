@@ -18,8 +18,9 @@ export interface EditResult {
 
 /**
  * `quote` has no desktop counterpart — the desktop toolbar has nine buttons and
- * none of them is a blockquote — and the desktop's `image` is absent here until
- * M10 gives `glacier-img://` something to point at.
+ * none of them is a blockquote. `image` is not in this union although the
+ * toolbar has a button for it: attaching is asynchronous and needs the picked
+ * file, so it travels on its own output and lands in `insertImageReference`.
  */
 export type ToolbarAction =
   | 'bold'
@@ -137,6 +138,61 @@ export function insertLink(value: string, selStart: number, selEnd: number): Edi
     // Leaves the URL selected so typing replaces it.
     selEnd: urlStart + placeholder.length,
   };
+}
+
+/**
+ * Writes the canonical `![alt](glacier-img://<id>)` the desktop reads, and
+ * leaves the caret after it so typing continues below the image.
+ */
+export function insertImageReference(
+  value: string,
+  selStart: number,
+  selEnd: number,
+  imageId: string,
+  alt = '',
+): EditResult {
+  const before = value.slice(0, selStart);
+  const after = value.slice(selEnd);
+  // An image is a block: it needs its own line, or Markdown folds it into the
+  // paragraph the caret was sitting in.
+  const lead = before === '' || before.endsWith('\n') ? '' : '\n';
+  const trail = after.startsWith('\n') ? '' : '\n';
+  const markup = `${lead}![${imageAlt(alt)}](glacier-img://${imageId})${trail}`;
+  return {
+    value: before + markup + after,
+    selStart: selStart + markup.length,
+    selEnd: selStart + markup.length,
+  };
+}
+
+/**
+ * Removes the image markup *and* any bare mention left behind. Both count as a
+ * reference (`referencedImageIds`), so leaving one would make the collector
+ * decide the image is still in use and strand the file the user just deleted.
+ */
+export function removeImageReference(value: string, imageId: string): string {
+  const id = escapeRegExp(imageId);
+  return value
+    .replace(new RegExp(`!\\[[^\\]]*\\]\\(glacier-img://${id}\\)\\n?`, 'g'), '')
+    .replace(new RegExp(`glacier-img://${id}`, 'g'), '');
+}
+
+/**
+ * Drops every image from a body without touching its text. The note card uses
+ * this so an attachment appears once, in the card's thumbnail row, instead of
+ * twice — the row covers images the 600-character preview cut off anyway.
+ */
+export function stripImageReferences(value: string): string {
+  return value.replace(/!\[[^\]]*\]\(glacier-img:\/\/[0-9a-f-]{36}\)\n?/g, '');
+}
+
+/** Brackets and newlines would end the alt text early and break the link. */
+function imageAlt(alt: string): string {
+  return alt.replace(/[[\]\r\n]/g, ' ').trim();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export function toggleCode(value: string, selStart: number, selEnd: number): EditResult {

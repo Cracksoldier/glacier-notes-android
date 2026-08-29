@@ -35,6 +35,44 @@ export class ImageAssetRepository {
     return asset;
   }
 
+  /** Every id in the table, for M10's startup orphan sweep. */
+  listIds(): Promise<string[]> {
+    return this.context.read('images.listIds', async (adapter) => {
+      const rows = await adapter.query<{ id: string }>('SELECT id FROM image_assets');
+      return rows.map((row) => row.id);
+    });
+  }
+
+  /**
+   * Which of `ids` no note references any more — the database-side twin of
+   * `referencedImageIds()`, and the *only* thing allowed to authorize deleting
+   * an image file.
+   *
+   * The two `NOT EXISTS` clauses are the two halves the model describes: the
+   * `note_images` junction, and a bare `glacier-img://<id>` left in a body. The
+   * `LIKE` mirrors the desktop's `content.includes(imageId)` and needs no
+   * `ESCAPE`, since a UUID contains neither `%` nor `_`.
+   *
+   * This predicate and `referencedImageIds()` must move together, the same way
+   * `compareActiveNotes` and the `ORDER BY` in `note-queries.ts` do.
+   */
+  unreferenced(ids: readonly string[]): Promise<string[]> {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.context.read('images.unreferenced', async (adapter) => {
+      const placeholders = ids.map(() => '?').join(', ');
+      const rows = await adapter.query<{ id: string }>(
+        `SELECT id FROM image_assets
+          WHERE id IN (${placeholders})
+            AND NOT EXISTS (SELECT 1 FROM note_images WHERE image_id = image_assets.id)
+            AND NOT EXISTS (SELECT 1 FROM notes WHERE content LIKE '%' || image_assets.id || '%')`,
+        [...ids],
+      );
+      return rows.map((row) => row.id);
+    });
+  }
+
   insert(asset: ImageAsset): Promise<void> {
     return this.context.write('images.insert', async (adapter) => {
       const row = imageAssetToRow(asset);

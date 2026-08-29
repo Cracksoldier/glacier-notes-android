@@ -37,8 +37,9 @@ mean shipping untested code paths with no caller.
 has nine buttons and none of them is a quote (`markdown-toolbar.ts:74-89`); M06
 requires one. It is `prefixLines(value, s, e, '> ')` — the same primitive `h1`,
 `h2` and `ul` already use, so it inherits their toggle-off behaviour for free.
-The desktop's image button is absent instead: `glacier-img://` has nothing to
-point at until M10.
+The desktop's image button was absent instead, because `glacier-img://` had
+nothing to point at until M10 gave it files. It now exists, outside the
+`ToolbarAction` union rather than in it — see `docs/images.md`.
 
 **Empty notes created in the editor session are discarded.** The desktop keeps
 them unconditionally (`electron/storage/note-repo.ts:66-85`). M06's task list
@@ -84,11 +85,14 @@ Four independent layers, none of which is load-bearing alone:
 1. **The sanitizer removes the node, not the attribute.** The
    `afterSanitizeAttributes` hook deletes any `<img>` whose `src` is not
    `glacier-img://<uuid>`. A neutered `<img>` with a stripped attribute would
-   still be an element M10 might later re-populate; a removed one cannot be.
+   still be an element something later re-populates; a removed one cannot be.
+   M10 resolves the surviving references to real URLs *after* this hook has run,
+   so the whitelist is still the only way an `<img>` gets into the output.
 2. **A `Content-Security-Policy` meta tag in `src/index.html`** with
    `default-src 'self'`, `img-src 'self' data: blob:` and `connect-src 'self'`.
    `style-src` must keep `'unsafe-inline'` because Angular injects component CSS
-   as `<style>` tags; `blob:` is there for M10's image handler.
+   as `<style>` tags. M10's resolved URLs are same-origin and covered by
+   `'self'`; `data:` is what the browser-only memory file store uses.
 3. **The WebView never follows a link itself.** The preview's click handler
    `preventDefault()`s, re-validates the protocol with `new URL()`, and only then
    calls `window.open(href, '_blank')`, which Capacitor turns into an

@@ -10,6 +10,7 @@ import { LabelPrompts } from '../labels/label-prompts';
 import { LabelsStore } from '../labels/labels.store';
 import { NotebookPrompts } from '../notebooks/notebook-prompts';
 import { NotebooksStore } from '../notebooks/notebooks.store';
+import { ImagePrompts } from './image-prompts';
 import { NoteEditorPage } from './note-editor.page';
 import { NotesStore } from './notes.store';
 
@@ -44,11 +45,13 @@ describe('NoteEditorPage', () => {
   /** An Ionic action sheet cannot be presented under jsdom; only its answer matters here. */
   let chosenNotebookId: string | undefined;
   let chosenLabelIds: readonly string[] | undefined;
+  let viewerAnswer: 'remove' | undefined;
 
   beforeEach(async () => {
     capacitorApp.listeners.length = 0;
     chosenNotebookId = undefined;
     chosenLabelIds = undefined;
+    viewerAnswer = undefined;
 
     TestBed.configureTestingModule({
       providers: [
@@ -59,6 +62,7 @@ describe('NoteEditorPage', () => {
           useValue: { pickNotebook: () => Promise.resolve(chosenNotebookId) },
         },
         { provide: LabelPrompts, useValue: { pickLabels: () => Promise.resolve(chosenLabelIds) } },
+        { provide: ImagePrompts, useValue: { viewImage: () => Promise.resolve(viewerAnswer) } },
       ],
     });
     repositories = await createTestRepositories();
@@ -576,6 +580,127 @@ describe('NoteEditorPage', () => {
 
       expect(click.defaultPrevented).toBe(true);
       expect(open_).toHaveBeenCalledWith('https://example.com/', '_blank');
+    });
+  });
+
+  describe('images', () => {
+    /** The picker hands the WebView a `File`; jsdom cannot open one, so this is the seam. */
+    function attach(
+      fixture: ComponentFixture<NoteEditorPage>,
+      type = 'image/png',
+      name = 'holiday.png',
+    ): Promise<void> {
+      return (
+        fixture.componentInstance as unknown as { attachImage(file: File): Promise<void> }
+      ).attachImage(new File(['bytes'], name, { type }));
+    }
+
+    async function attached(fixture: ComponentFixture<NoteEditorPage>): Promise<void> {
+      await attach(fixture);
+      fixture.detectChanges();
+    }
+
+    it('writes the reference into the body and claims the image on the note', async () => {
+      const note = await store.createNote('text');
+      const fixture = await open(note);
+
+      await attached(fixture);
+
+      const stored = await repositories.notes.get(note.id);
+      expect(stored.imageIds).toHaveLength(1);
+      expect(stored.content).toBe(`![holiday.png](glacier-img://${stored.imageIds[0]})\n`);
+      expect(await repositories.files.list()).toEqual(stored.imageIds);
+    });
+
+    it('shows a thumbnail per attachment', async () => {
+      const note = await store.createNote('text');
+      const fixture = await open(note);
+
+      await attached(fixture);
+      await attached(fixture);
+
+      expect(fixture.nativeElement.querySelectorAll('.editor__thumb')).toHaveLength(2);
+    });
+
+    /**
+     * Same `updatedAt` hazard as the notebook chip: a debounce landing after the
+     * attach would write the pre-attach body back over the reference.
+     */
+    it('flushes a pending edit before attaching', async () => {
+      const note = await store.createNote('text');
+      const fixture = await open(note);
+
+      type(fixture, '.editor__content', 'typed first');
+      await attached(fixture);
+
+      const stored = await repositories.notes.get(note.id);
+      expect(stored.content).toBe(
+        `typed first\n![holiday.png](glacier-img://${stored.imageIds[0]})\n`,
+      );
+    });
+
+    it('explains a rejected file and writes nothing', async () => {
+      const note = await store.createNote('text');
+      const fixture = await open(note);
+
+      await attach(fixture, 'application/pdf', 'manual.pdf');
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('not supported');
+      expect((await repositories.notes.get(note.id)).imageIds).toEqual([]);
+      expect(await repositories.files.list()).toEqual([]);
+    });
+
+    it('takes the reference out of the body and deletes the file when removed', async () => {
+      const note = await store.createNote('text');
+      const fixture = await open(note);
+      await attached(fixture);
+      viewerAnswer = 'remove';
+
+      (fixture.nativeElement.querySelector('.editor__thumb') as HTMLButtonElement).click();
+      await settle();
+      fixture.detectChanges();
+
+      const stored = await repositories.notes.get(note.id);
+      expect(stored.content).toBe('');
+      expect(stored.imageIds).toEqual([]);
+      expect(await repositories.files.list()).toEqual([]);
+      expect(await repositories.images.listIds()).toEqual([]);
+      expect(fixture.nativeElement.querySelector('.editor__thumb')).toBeNull();
+    });
+
+    it('keeps the image when the viewer is dismissed without removing', async () => {
+      const note = await store.createNote('text');
+      const fixture = await open(note);
+      await attached(fixture);
+
+      (fixture.nativeElement.querySelector('.editor__thumb') as HTMLButtonElement).click();
+      await settle();
+
+      expect(await repositories.files.list()).toHaveLength(1);
+    });
+
+    it('offers no image button on a checklist, which has no body to put one in', async () => {
+      const note = await store.createNote('checklist');
+      const fixture = await open(note);
+
+      expect(fixture.nativeElement.querySelector('button[aria-label="Image"]')).toBeNull();
+    });
+
+    it('opens the viewer for an image tapped in the preview', async () => {
+      const note = await store.createNote('text');
+      const fixture = await open(note);
+      await attached(fixture);
+      const imageId = (await repositories.notes.get(note.id)).imageIds[0];
+
+      (fixture.nativeElement.querySelector('.editor__preview-toggle') as HTMLElement).click();
+      fixture.detectChanges();
+      const image = fixture.nativeElement.querySelector(
+        '.editor__preview img[data-image-id]',
+      ) as HTMLImageElement;
+
+      expect(image.getAttribute('data-image-id')).toBe(imageId);
+      expect(image.getAttribute('src')).toContain('data:image/png;base64,');
     });
   });
 });

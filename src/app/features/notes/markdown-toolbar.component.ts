@@ -7,6 +7,7 @@ import { I18nService, type TranslationKey } from '../../core/localization/i18n.s
 import {
   faBold,
   faCode,
+  faImage,
   faItalic,
   faLink,
   faListOl,
@@ -15,9 +16,13 @@ import {
 } from '../../shared/utilities/glacier-icons';
 
 /**
- * The desktop's `markdown-toolbar.ts` with two deliberate changes: a quote
- * button M06 asks for that the desktop does not have, and no image button
- * because `glacier-img://` assets are M10.
+ * The desktop's `markdown-toolbar.ts` plus a quote button M06 asks for that the
+ * desktop does not have.
+ *
+ * The image button sits outside the `buttons` array and emits `attach` rather
+ * than `action`: every other button is a synchronous text transform in
+ * `applyToolbarAction`, while attaching has to open a picker and write a file
+ * first. Folding it into `ToolbarAction` would make that union impure.
  */
 @Component({
   selector: 'app-markdown-toolbar',
@@ -40,9 +45,19 @@ import {
         }
       </button>
     }
+    <button
+      type="button"
+      class="toolbar__button toolbar__image"
+      [attr.aria-label]="i18n.t('mdToolbar.image')"
+      [disabled]="disabled()"
+      (mousedown)="$event.preventDefault()"
+      (click)="attach.emit()"
+    >
+      <fa-icon [icon]="imageIcon" />
+    </button>
   `,
   styles: `
-    // The desktop fits nine buttons on one row; a 360dp phone cannot, so the
+    // The desktop fits its whole toolbar on one row; a 360dp phone cannot, so the
     // row scrolls sideways instead of wrapping into a second line that would
     // push the textarea down.
     :host {
@@ -88,8 +103,10 @@ import {
 export class MarkdownToolbarComponent {
   readonly disabled = input(false);
   readonly action = output<ToolbarAction>();
+  readonly attach = output<void>();
 
   protected readonly i18n = inject(I18nService);
+  protected readonly imageIcon = faImage;
 
   protected readonly buttons: {
     action: ToolbarAction;

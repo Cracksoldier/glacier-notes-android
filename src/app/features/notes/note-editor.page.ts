@@ -17,8 +17,15 @@ import type { PluginListenerHandle } from '@capacitor/core';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import { IonButton, IonButtons, IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
 
-import { I18nService } from '../../core/localization/i18n.service';
-import { applyToolbarAction, type ToolbarAction } from '../../core/markdown/markdown-edit';
+import { ImageAttachmentService } from '../../core/images/image-attachment.service';
+import { IMAGE_FILE_STORE } from '../../core/images/image-file-store';
+import { I18nService, type TranslationKey } from '../../core/localization/i18n.service';
+import {
+  applyToolbarAction,
+  insertImageReference,
+  removeImageReference,
+  type ToolbarAction,
+} from '../../core/markdown/markdown-edit';
 import { MarkdownService } from '../../core/markdown/markdown.service';
 import type { ChecklistItem } from '../../core/models/checklist-item';
 import type { NoteType } from '../../core/models/note';
@@ -41,6 +48,7 @@ import { NotebookPrompts } from '../notebooks/notebook-prompts';
 import { NotebooksStore } from '../notebooks/notebooks.store';
 import { ChecklistEditorComponent } from './checklist-editor.component';
 import { checklistToText, textToChecklist } from './checklist-model';
+import { ImagePrompts, attachFailureKey } from './image-prompts';
 import { MarkdownToolbarComponent } from './markdown-toolbar.component';
 import { NotesStore } from './notes.store';
 
@@ -142,11 +150,44 @@ type EditorStatus = 'loading' | 'ready' | 'missing';
               class="editor__toolbar"
               [disabled]="previewMode()"
               (action)="onToolbar($event)"
+              (attach)="fileInput.click()"
+            />
+            <!-- The system picker with no plugin and no permission: Capacitor's
+                 BridgeWebChromeClient turns this into an ACTION_GET_CONTENT
+                 intent. No capture attribute, so the camera branch never
+                 runs and CAMERA is never requested. -->
+            <input
+              #fileInput
+              class="editor__file"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              (change)="onFilePicked($event)"
             />
           }
 
           @if (store.saveFailed()) {
             <p class="editor__error" role="alert">{{ i18n.t('editor.saveFailed') }}</p>
+          }
+
+          @if (attachError(); as key) {
+            <p class="editor__error" role="alert">{{ i18n.t(key) }}</p>
+          }
+
+          @if (!isChecklist() && imageIds().length) {
+            <ul class="editor__images" [attr.aria-label]="i18n.t('a11y.noteImages')">
+              @for (id of imageIds(); track id) {
+                <li>
+                  <button
+                    type="button"
+                    class="editor__thumb"
+                    (click)="openImage(id)"
+                    [attr.aria-label]="i18n.t('image.viewer')"
+                  >
+                    <img [src]="imageUrl(id)" alt="" />
+                  </button>
+                </li>
+              }
+            </ul>
           }
 
           @if (isChecklist()) {
@@ -225,6 +266,36 @@ type EditorStatus = 'loading' | 'ready' | 'missing';
       border-bottom: 1px solid var(--color-border);
     }
 
+    .editor__file {
+      display: none;
+    }
+
+    .editor__images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 8px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .editor__thumb {
+      display: block;
+      width: 64px;
+      height: 64px;
+      padding: 0;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      background-color: var(--color-surface-elevated);
+      overflow: hidden;
+    }
+
+    .editor__thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
     .editor__error {
       margin: 8px 0 0;
       padding: 8px 10px;
@@ -283,6 +354,9 @@ export class NoteEditorPage implements OnDestroy {
   private readonly notebookPrompts = inject(NotebookPrompts);
   private readonly labels = inject(LabelsStore);
   private readonly labelPrompts = inject(LabelPrompts);
+  private readonly attachments = inject(ImageAttachmentService);
+  private readonly imageFiles = inject(IMAGE_FILE_STORE);
+  private readonly imagePrompts = inject(ImagePrompts);
   protected readonly settings = inject(SettingsStore);
 
   protected readonly backIcon = faArrowLeft;
@@ -298,6 +372,8 @@ export class NoteEditorPage implements OnDestroy {
   protected readonly content = signal('');
   protected readonly type = signal<NoteType>('text');
   protected readonly items = signal<ChecklistItem[]>([]);
+  protected readonly imageIds = signal<readonly string[]>([]);
+  protected readonly attachError = signal<TranslationKey | undefined>(undefined);
   protected readonly previewMode = signal(false);
   protected readonly status = signal<EditorStatus>('loading');
   protected readonly previewHtml = computed(() => this.markdown.render(this.content()));
@@ -383,12 +459,100 @@ export class NoteEditorPage implements OnDestroy {
     this.scheduleSave();
   }
 
+  protected imageUrl(id: string): string {
+    return this.imageFiles.url(id);
+  }
+
+  protected onFilePicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    // Cleared so picking the same file twice in a row still fires `change`.
+    input.value = '';
+    if (file) {
+      void this.attachImage(file);
+    }
+  }
+
+  /**
+   * Flushed first for the same `updatedAt` reason as `chooseNotebook`, then
+   * written as one patch: the reference in the body and the `note_images` row
+   * must land together, or the garbage collector could see a claim with no
+   * referent.
+   */
+  protected async attachImage(file: File): Promise<void> {
+    if (this.status() !== 'ready' || this.isChecklist()) {
+      return;
+    }
+    this.attachError.set(undefined);
+    await this.flush();
+
+    const result = await this.attachments.attach(file);
+    if (!result.ok) {
+      this.attachError.set(attachFailureKey(result.reason));
+      return;
+    }
+
+    const textarea = this.textareaRef()?.nativeElement;
+    // The preview hides the textarea, so the reference goes to the end of the
+    // source instead of to a caret that is not on screen.
+    const value = textarea?.value ?? this.content();
+    const caret = textarea?.selectionStart ?? value.length;
+    const edit = insertImageReference(
+      value,
+      caret,
+      textarea?.selectionEnd ?? caret,
+      result.asset.id,
+      result.asset.fileName ?? '',
+    );
+    if (textarea) {
+      textarea.value = edit.value;
+      textarea.focus();
+      textarea.setSelectionRange(edit.selStart, edit.selEnd);
+    }
+    this.content.set(edit.value);
+    this.imageIds.set([...this.imageIds(), result.asset.id]);
+    await this.store.save(this.id(), { content: edit.value, imageIds: [...this.imageIds()] });
+  }
+
+  protected async openImage(id: string): Promise<void> {
+    if ((await this.imagePrompts.viewImage(this.imageUrl(id))) === 'remove') {
+      await this.removeImage(id);
+    }
+  }
+
+  /**
+   * The note is saved without the image *before* the file is collected: only
+   * then does `unreferenced()` agree the image is gone, and the `RESTRICT` FK
+   * on `note_images` would otherwise refuse the delete.
+   */
+  private async removeImage(id: string): Promise<void> {
+    await this.flush();
+    const content = removeImageReference(this.content(), id);
+    const remaining = this.imageIds().filter((imageId) => imageId !== id);
+    const textarea = this.textareaRef()?.nativeElement;
+    if (textarea) {
+      textarea.value = content;
+    }
+    this.content.set(content);
+    this.imageIds.set(remaining);
+    await this.store.save(this.id(), { content, imageIds: [...remaining] });
+    await this.store.collectImages([id]);
+  }
+
   /**
    * The WebView must never follow a link itself — navigating away would blank
    * the app shell. The protocol re-check is redundant against the sanitizer and
    * kept anyway: it is the last gate before an intent leaves the app.
    */
   protected onPreviewClick(event: MouseEvent): void {
+    const image = (event.target as HTMLElement).closest('img[data-image-id]');
+    if (image) {
+      const id = image.getAttribute('data-image-id');
+      if (id) {
+        void this.openImage(id);
+      }
+      return;
+    }
     const anchor = (event.target as HTMLElement).closest('a');
     if (!anchor) {
       return;
@@ -438,6 +602,7 @@ export class NoteEditorPage implements OnDestroy {
     this.items.set([...(note.checklist ?? [])]);
     this.notebookId.set(note.notebookId);
     this.labelIds.set(note.labels);
+    this.imageIds.set(note.imageIds);
     this.status.set('ready');
   }
 

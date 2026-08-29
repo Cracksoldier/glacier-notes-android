@@ -26,6 +26,7 @@ export {
   faFolderOpen,
   faGear,
   faGripVertical,
+  faImage,
   faItalic,
   faLink,
   faListCheck,

@@ -63,6 +63,12 @@ ion-fab[vertical="bottom"] {
   img {
     max-width: 100%;
     border-radius: 6px;
+    // A file that has gone missing degrades to a neutral box carrying its alt
+    // text rather than to a broken-image glyph. The tint is the only thing that
+    // makes the failure legible, and it is worth what it puts behind a
+    // transparent PNG.
+    min-height: 28px;
+    background-color: var(--color-surface-elevated);
   }
 
   > *:first-child {

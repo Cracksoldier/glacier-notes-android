@@ -1,13 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { IMAGE_FILE_STORE } from '../images/image-file-store';
+import { MemoryImageFileStore } from '../images/memory-image-file-store';
 import { MarkdownService } from './markdown.service';
 
 describe('MarkdownService', () => {
   let markdown: MarkdownService;
+  let files: MemoryImageFileStore;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    files = new MemoryImageFileStore();
+    TestBed.configureTestingModule({
+      providers: [{ provide: IMAGE_FILE_STORE, useValue: files }],
+    });
     markdown = TestBed.inject(MarkdownService);
   });
 

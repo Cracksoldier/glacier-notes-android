@@ -416,9 +416,10 @@ Recorded rather than decided — these need a product call before the milestones
 2. **Scoped export.** Desktop can export a single notebook or a single note; Android spec §15.2
    mandates only whole-collection export. Per-note export pairs naturally with the Android share
    sheet. *Decision needed before M12/M14.*
-3. **GIF support.** Desktop accepts `image/gif` on import. If Android rejects GIF it will fail to
-   import valid desktop exports. Recommend accepting GIF at minimum on the import path.
-   *Decision needed before M10.*
+3. ~~**GIF support.**~~ **Decided at M10: GIF is accepted everywhere, not import-only.** Rejecting
+   it on the attach path while accepting it on import would leave the two paths disagreeing about
+   what a valid image is, for no gain — the WebView renders GIF and nothing here recompresses.
+   The picker's `accept`, `IMAGE_MIME_TYPES` and M13's import now share one list.
 4. **Icon library.** Desktop uses Font Awesome Free 7 (CSS-class based, with CC BY 4.0 attribution
    duty); the Android starter ships Ionicons 8, which is idiomatic for Ionic and already bundled.
    Mixing the two is explicitly discouraged by spec §7.4. *Decision needed before M02.*

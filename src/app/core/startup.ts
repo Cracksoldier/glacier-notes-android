@@ -1,6 +1,8 @@
 import { type EnvironmentProviders, inject, provideAppInitializer } from '@angular/core';
 
 import { DatabaseService } from './database/database.service';
+import { IMAGE_FILE_STORE } from './images/image-file-store';
+import { ImageGcService } from './images/image-gc.service';
 import { TrashMaintenanceService } from './maintenance/trash-maintenance.service';
 import { SettingsStore } from './preferences/settings.store';
 
@@ -23,10 +25,20 @@ export function provideStartup(): EnvironmentProviders {
     // Injected up front: an injection context does not survive an `await`.
     const settings = inject(SettingsStore);
     const database = inject(DatabaseService);
+    const images = inject(IMAGE_FILE_STORE);
     const trash = inject(TrashMaintenanceService);
+    const imageGc = inject(ImageGcService);
 
-    // Loading preferences and opening the database are independent, and
-    // `DatabaseService.init` deliberately cannot reject. The purge needs both.
-    return Promise.all([settings.init(), database.init()]).then(() => trash.runStartupPurge());
+    // Loading preferences, opening the database and creating the image
+    // directory are independent, and `DatabaseService.init` deliberately cannot
+    // reject. The purge needs the first two.
+    return (
+      Promise.all([settings.init(), database.init(), images.init()])
+        .then(() => trash.runStartupPurge())
+        // Last, so that whatever the purge just freed is collected in the same
+        // pass, and so a file written by an attach the app was killed in the
+        // middle of does not leak forever.
+        .then(() => imageGc.sweep())
+    );
   });
 }

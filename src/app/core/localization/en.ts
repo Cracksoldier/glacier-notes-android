@@ -123,6 +123,17 @@ export const en = {
   'mdToolbar.quote': 'Quote',
   'mdToolbar.link': 'Link',
   'mdToolbar.code': 'Code',
+  'mdToolbar.image': 'Image',
+
+  // android: the desktop shows images in a resizable window and never has to
+  // explain a picker, a size limit or a failed write to app-private storage.
+  'image.viewer': 'Image',
+  'image.remove': 'Remove image',
+  'image.removeTitle': 'Remove this image?',
+  'image.removeHint': 'It is taken out of the note and deleted from this device.',
+  'image.unsupportedType': 'That file type is not supported. Pick a PNG, JPEG, WebP or GIF.',
+  'image.tooLarge': 'That image is larger than 10 MB.',
+  'image.attachFailed': 'Could not add the image. There may be no space left on the device.',
 
   'common.back': 'Back',
   'common.cancel': 'Cancel',
@@ -177,6 +188,7 @@ export const en = {
   'a11y.labelActions': 'Label actions',
   'a11y.newLabel': 'New label',
   'a11y.noteLabels': 'Labels of this note',
+  'a11y.noteImages': 'Images in this note',
   'a11y.trashAutoPurge': 'Delete trashed notes after',
   'a11y.emptyTrash': 'Empty trash',
 } as const;

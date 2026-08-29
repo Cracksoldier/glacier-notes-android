@@ -3,6 +3,9 @@ import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
+import { IMAGE_FILE_STORE } from '../images/image-file-store';
+import { resolveImageSources } from './glacier-image-src';
+
 /**
  * Renders note bodies to HTML. Ported from the desktop's
  * src/app/core/markdown/markdown.service.ts, including its parser options and
@@ -26,6 +29,7 @@ const ALLOWED_URI =
 @Injectable({ providedIn: 'root' })
 export class MarkdownService {
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly images = inject(IMAGE_FILE_STORE);
 
   constructor() {
     DOMPurify.addHook('afterSanitizeAttributes', (node) => {
@@ -44,9 +48,15 @@ export class MarkdownService {
   /**
    * The only place allowed to bypass Angular's sanitizer: DOMPurify has already
    * run, and the CSP is the second line of defence.
+   *
+   * Image sources are resolved after sanitizing rather than before, so the hook
+   * above still only ever sees the canonical `glacier-img://` form and nothing
+   * can smuggle a URL past it by arriving pre-resolved.
    */
   render(markdown: string): SafeHtml {
-    return this.sanitizer.bypassSecurityTrustHtml(this.renderToHtml(markdown));
+    return this.sanitizer.bypassSecurityTrustHtml(
+      resolveImageSources(this.renderToHtml(markdown), (id) => this.images.url(id)),
+    );
   }
 
   /** Card previews. Truncates the *source* first, so a long note costs one short parse. */

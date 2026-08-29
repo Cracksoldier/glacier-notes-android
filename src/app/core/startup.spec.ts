@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { DATABASE_ADAPTER } from './database/database-adapter';
 import { NodeSqliteAdapter } from './database/node-sqlite.adapter';
 import { runMigrations } from './database/migrations/migration-runner';
+import { IMAGE_FILE_STORE } from './images/image-file-store';
+import { MemoryImageFileStore } from './images/memory-image-file-store';
 import { MemoryPreferencesAdapter } from './preferences/memory-preferences.adapter';
 import { PREFERENCES_ADAPTER } from './preferences/preferences-adapter';
 import { SETTINGS_STORAGE_KEY } from './preferences/settings.store';
@@ -48,6 +50,7 @@ describe('provideStartup', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: DATABASE_ADAPTER, useValue: adapter },
+        { provide: IMAGE_FILE_STORE, useValue: new MemoryImageFileStore() },
         {
           provide: PREFERENCES_ADAPTER,
           useValue: new MemoryPreferencesAdapter({

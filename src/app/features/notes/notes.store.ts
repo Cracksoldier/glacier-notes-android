@@ -165,6 +165,15 @@ export class NotesStore {
     await this.load();
   }
 
+  /**
+   * A passthrough so every garbage-collection call site sits here, next to
+   * `discard`, `deleteForever` and `emptyTrash`. The editor calls it after
+   * saving a note it has just taken an image out of.
+   */
+  collectImages(imageIds: readonly string[]): Promise<void> {
+    return this.imageGc.collect(imageIds);
+  }
+
   clearSaveError(): void {
     this.failedSave.set(false);
   }

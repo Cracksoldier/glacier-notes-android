@@ -111,6 +111,17 @@ export const de: Record<TranslationKey, string> = {
   'mdToolbar.quote': 'Zitat',
   'mdToolbar.link': 'Link',
   'mdToolbar.code': 'Code',
+  'mdToolbar.image': 'Bild',
+
+  'image.viewer': 'Bild',
+  'image.remove': 'Bild entfernen',
+  'image.removeTitle': 'Dieses Bild entfernen?',
+  'image.removeHint': 'Es wird aus der Notiz genommen und von diesem Gerät gelöscht.',
+  'image.unsupportedType':
+    'Dieser Dateityp wird nicht unterstützt. Wähle PNG, JPEG, WebP oder GIF.',
+  'image.tooLarge': 'Dieses Bild ist größer als 10 MB.',
+  'image.attachFailed':
+    'Bild konnte nicht hinzugefügt werden. Möglicherweise ist kein Speicher frei.',
 
   'common.back': 'Zurück',
   'common.cancel': 'Abbrechen',
@@ -160,6 +171,7 @@ export const de: Record<TranslationKey, string> = {
   'a11y.labelActions': 'Aktionen für das Label',
   'a11y.newLabel': 'Neues Label',
   'a11y.noteLabels': 'Labels dieser Notiz',
+  'a11y.noteImages': 'Bilder in dieser Notiz',
   'a11y.trashAutoPurge': 'Notizen im Papierkorb löschen nach',
   'a11y.emptyTrash': 'Papierkorb leeren',
 };

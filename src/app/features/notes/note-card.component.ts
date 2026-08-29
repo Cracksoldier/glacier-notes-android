@@ -9,8 +9,11 @@ import {
 } from '@angular/core';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 
+import { IMAGE_FILE_STORE } from '../../core/images/image-file-store';
 import { I18nService } from '../../core/localization/i18n.service';
+import { stripImageReferences } from '../../core/markdown/markdown-edit';
 import { MarkdownService } from '../../core/markdown/markdown.service';
+import { referencedImageIds } from '../../core/models/image-asset';
 import type { Note } from '../../core/models/note';
 import { SettingsStore } from '../../core/preferences/settings.store';
 import { LabelsStore } from '../labels/labels.store';
@@ -21,6 +24,8 @@ import { noteColorVar } from './note-colors';
 
 /** The desktop's own cut-off (`note-card.ts`), so a card is the same height in both apps. */
 const CARD_ITEM_LIMIT = 8;
+
+const CARD_IMAGE_LIMIT = 3;
 
 /**
  * The desktop's note card (`note-card.scss`), with its hover-revealed action row
@@ -60,10 +65,18 @@ const CARD_ITEM_LIMIT = 8;
         @if (hiddenItems()) {
           <p class="note-card__more">{{ i18n.t('card.more', { count: hiddenItems() }) }}</p>
         }
-      } @else if (note().content) {
+      } @else if (previewSource()) {
         <div class="note-card__preview markdown-body" [innerHTML]="preview()"></div>
-      } @else if (!note().title) {
+      } @else if (!note().title && !thumbnails().length) {
         <p class="note-card__blank">{{ i18n.t('card.emptyNote') }}</p>
+      }
+
+      @if (thumbnails().length) {
+        <ul class="note-card__images" [attr.aria-label]="i18n.t('a11y.noteImages')">
+          @for (url of thumbnails(); track url) {
+            <li><img class="note-card__thumb" [src]="url" alt="" /></li>
+          }
+        </ul>
       }
 
       @if (labelNames().length) {
@@ -165,6 +178,24 @@ const CARD_ITEM_LIMIT = 8;
       font-style: italic;
     }
 
+    .note-card__images {
+      display: flex;
+      gap: 4px;
+      margin: 8px 0 0;
+      padding: 0;
+      list-style: none;
+      pointer-events: none;
+    }
+
+    .note-card__thumb {
+      display: block;
+      width: 56px;
+      height: 56px;
+      border-radius: 6px;
+      background-color: var(--color-surface-elevated);
+      object-fit: cover;
+    }
+
     .note-card__labels {
       display: flex;
       flex-wrap: wrap;
@@ -189,6 +220,7 @@ export class NoteCardComponent implements OnDestroy {
   private readonly markdown = inject(MarkdownService);
   private readonly labels = inject(LabelsStore);
   private readonly settings = inject(SettingsStore);
+  private readonly images = inject(IMAGE_FILE_STORE);
 
   readonly note = input.required<Note>();
 
@@ -199,7 +231,18 @@ export class NoteCardComponent implements OnDestroy {
 
   private readonly tracker = new LongPressTracker({ onLongPress: () => this.longPress.emit() });
 
-  protected readonly preview = computed(() => this.markdown.renderPreview(this.note().content));
+  protected readonly previewSource = computed(() => stripImageReferences(this.note().content));
+  protected readonly preview = computed(() => this.markdown.renderPreview(this.previewSource()));
+
+  /**
+   * Drawn from `referencedImageIds`, not `imageIds`, so an imported note whose
+   * junction rows are thinner than its body still shows what it embeds.
+   */
+  protected readonly thumbnails = computed(() =>
+    referencedImageIds(this.note())
+      .slice(0, CARD_IMAGE_LIMIT)
+      .map((id) => this.images.url(id)),
+  );
 
   /**
    * Item text is rendered inline rather than shown raw: the editor edits the

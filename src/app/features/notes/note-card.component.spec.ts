@@ -144,6 +144,68 @@ describe('NoteCardComponent', () => {
     });
   });
 
+  describe('the thumbnail row', () => {
+    function id(index: number): string {
+      return `1111111${index}-2222-3333-4444-555555555555`;
+    }
+
+    async function store(count: number): Promise<void> {
+      for (let index = 0; index < count; index += 1) {
+        await repositories.files.write(id(index), 'QUJD', 'image/png');
+      }
+    }
+
+    function sources(host: HTMLElement): string[] {
+      return [...host.querySelectorAll<HTMLImageElement>('.note-card__thumb')].map(
+        (img) => img.getAttribute('src') ?? '',
+      );
+    }
+
+    it('shows one thumbnail per attachment and stops at three', async () => {
+      await store(4);
+      const host: HTMLElement = render({
+        imageIds: [id(0), id(1), id(2), id(3)],
+      }).nativeElement;
+
+      expect(sources(host)).toEqual([
+        repositories.files.url(id(0)),
+        repositories.files.url(id(1)),
+        repositories.files.url(id(2)),
+      ]);
+    });
+
+    /** An imported note can embed an image its junction rows never claimed. */
+    it('draws an image mentioned only in the body', async () => {
+      await store(1);
+      const host: HTMLElement = render({
+        content: `![a](glacier-img://${id(0)})`,
+      }).nativeElement;
+
+      expect(sources(host)).toEqual([repositories.files.url(id(0))]);
+    });
+
+    /** The preview resolves image sources too, so it must not draw them again. */
+    it('keeps the image out of the preview, so it appears once', async () => {
+      await store(1);
+      const host: HTMLElement = render({
+        content: `text\n![a](glacier-img://${id(0)})`,
+      }).nativeElement;
+
+      const preview = host.querySelector('.note-card__preview');
+      expect(preview?.querySelector('img')).toBeNull();
+      expect(preview?.textContent).toContain('text');
+    });
+
+    it('does not call a note that is nothing but an image empty', async () => {
+      await store(1);
+      const host: HTMLElement = render({
+        content: `![a](glacier-img://${id(0)})`,
+      }).nativeElement;
+
+      expect(host.querySelector('.note-card__blank')).toBeNull();
+    });
+  });
+
   it('paints a known colour and leaves an unknown one to the stylesheet', () => {
     const known: HTMLElement = render({ color: 'teal' }).nativeElement;
     const unknown: HTMLElement = render({ color: 'chartreuse' as Note['color'] }).nativeElement;

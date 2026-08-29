@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import {
   applyToolbarAction,
+  insertImageReference,
   insertLink,
   orderedList,
   prefixLines,
+  removeImageReference,
+  stripImageReferences,
   type ToolbarAction,
   toggleCode,
   wrapSelection,
 } from './markdown-edit';
+
+const ID = '11111111-2222-3333-4444-555555555555';
 
 describe('wrapSelection', () => {
   it('wraps a selection and keeps it selected', () => {
@@ -175,5 +180,70 @@ describe('applyToolbarAction', () => {
 
       expect(twice.value, action).toBe('note');
     }
+  });
+});
+
+describe('insertImageReference', () => {
+  it('writes the canonical reference the desktop reads', () => {
+    expect(insertImageReference('', 0, 0, ID).value).toBe(`![](glacier-img://${ID})\n`);
+  });
+
+  it('gives the image its own line rather than folding it into a paragraph', () => {
+    const result = insertImageReference('text', 4, 4, ID);
+
+    expect(result.value).toBe(`text\n![](glacier-img://${ID})\n`);
+  });
+
+  it('adds no blank line when the caret already sits on one', () => {
+    expect(insertImageReference('text\n', 5, 5, ID).value).toBe(`text\n![](glacier-img://${ID})\n`);
+  });
+
+  it('leaves the caret after the markup so typing continues below the image', () => {
+    const result = insertImageReference('', 0, 0, ID);
+
+    expect(result.selStart).toBe(result.value.length);
+    expect(result.selEnd).toBe(result.selStart);
+  });
+
+  it('sanitizes an alt text that would otherwise end the link early', () => {
+    const result = insertImageReference('', 0, 0, ID, 'a [b] c\nd');
+
+    expect(result.value).toBe(`![a  b  c d](glacier-img://${ID})\n`);
+  });
+});
+
+describe('removeImageReference', () => {
+  it('takes the markup and the line it occupied', () => {
+    expect(removeImageReference(`one\n![a](glacier-img://${ID})\ntwo`, ID)).toBe('one\ntwo');
+  });
+
+  /**
+   * The collector reads a bare mention as a reference too, so leaving one would
+   * make it decide the image is still in use and strand the file.
+   */
+  it('takes a bare mention as well as the markup', () => {
+    expect(removeImageReference(`see glacier-img://${ID} there`, ID)).toBe('see  there');
+  });
+
+  it('leaves another image alone', () => {
+    const other = '99999999-8888-7777-6666-555555555555';
+    const value = `![a](glacier-img://${ID})\n![b](glacier-img://${other})\n`;
+
+    expect(removeImageReference(value, other)).toBe(`![a](glacier-img://${ID})\n`);
+  });
+});
+
+describe('stripImageReferences', () => {
+  it('removes every image and keeps the text between them', () => {
+    const other = '99999999-8888-7777-6666-555555555555';
+    const value = `one\n![a](glacier-img://${ID})\ntwo\n![b](glacier-img://${other})\n`;
+
+    expect(stripImageReferences(value)).toBe('one\ntwo\n');
+  });
+
+  it('leaves a remote image, which is not ours to hide', () => {
+    const value = '![a](https://example.com/a.png)';
+
+    expect(stripImageReferences(value)).toBe(value);
   });
 });
