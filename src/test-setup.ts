@@ -28,28 +28,30 @@ export function resetMediaQueries(): void {
   listeners.clear();
 }
 
-if (!window.matchMedia) {
-  window.matchMedia = (query: string): MediaQueryList => {
-    const add = (listener: Listener): void => {
-      const existing = listeners.get(query) ?? new Set<Listener>();
-      existing.add(listener);
-      listeners.set(query, existing);
-    };
-    const remove = (listener: Listener): void => {
-      listeners.get(query)?.delete(listener);
-    };
-
-    return {
-      get matches() {
-        return matchingQueries.has(query);
-      },
-      media: query,
-      onchange: null,
-      addListener: add,
-      removeListener: remove,
-      addEventListener: (_type: string, listener: Listener) => add(listener),
-      removeEventListener: (_type: string, listener: Listener) => remove(listener),
-      dispatchEvent: () => false,
-    } as MediaQueryList;
+// Overriding rather than filling a gap, so this is unconditional. Guarding on
+// `!window.matchMedia` meant that the day jsdom grows one of its own,
+// `setMediaQueryMatches` would silently stop working and the theme specs would
+// pass vacuously instead of failing.
+window.matchMedia = (query: string): MediaQueryList => {
+  const add = (listener: Listener): void => {
+    const existing = listeners.get(query) ?? new Set<Listener>();
+    existing.add(listener);
+    listeners.set(query, existing);
   };
-}
+  const remove = (listener: Listener): void => {
+    listeners.get(query)?.delete(listener);
+  };
+
+  return {
+    get matches() {
+      return matchingQueries.has(query);
+    },
+    media: query,
+    onchange: null,
+    addListener: add,
+    removeListener: remove,
+    addEventListener: (_type: string, listener: Listener) => add(listener),
+    removeEventListener: (_type: string, listener: Listener) => remove(listener),
+    dispatchEvent: () => false,
+  } as MediaQueryList;
+};

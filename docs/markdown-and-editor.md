@@ -163,8 +163,28 @@ The desktop debounces a second time in its storage layer
 `store.save()` goes straight into a SQLite transaction, which is strictly more
 durable and is the whole point of M05.
 
+### What a failed write owes the text
+
 A failed write sets `saveFailed` and shows a localized non-blocking line. It does
-**not** clear the editor's text.
+**not** clear the editor's text — and the promise that line makes has to hold all
+the way to exit, which takes three things:
+
+- `NotesStore.save()` **returns whether the write landed**. It still swallows the
+  error into `saveFailed` rather than rethrowing, because an autosave failure is
+  not the editor's to handle; the boolean is only so the caller can tell. The
+  explicit actions (`moveNote` and friends) still rethrow — that distinction is
+  the one `docs/notebooks.md` describes.
+- `flush()` clears `dirty` **after** `save()` resolves true, never before. Clearing
+  it up front meant `leave()`'s own flush returned early on `!dirty` and the edit
+  was dropped on the way out, while the banner still said the text was safe. On a
+  failure `dirty` stays set, so the next keystroke's debounce, the next
+  backgrounding, a move or a label change, and `leave()` itself each try again.
+- `loadNote()` calls `store.clearSaveError()`. `saveFailed` is root-scoped, so a
+  failure on one note would otherwise leave the banner standing over the next.
+
+There is deliberately no self-rearming retry loop. `ngOnDestroy` → `leave()` →
+`flush()` would turn one against a dead database into a write every 500 ms for as
+long as the page lives.
 
 The toolbar is `overflow-x: auto` with 40px touch targets. The desktop fits nine
 buttons on one row at 30px each; a 360dp phone cannot, and wrapping to a second

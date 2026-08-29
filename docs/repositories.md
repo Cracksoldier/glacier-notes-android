@@ -67,6 +67,31 @@ The cost is a throughput ceiling: no read runs while a write is in flight. That
 is the correct default for one connection, but if M11's search makes it hurt,
 measure before adding read concurrency.
 
+### The stall watchdog
+
+The queue's failure mode is that a `read`/`write` callback which itself calls
+`context.read()` or `context.write()` queues behind the operation it is inside.
+It waits for itself, forever, with no error and no rejected promise — the app
+simply stops responding to anything that touches the database.
+
+A WebView has no `AsyncLocalStorage`, so re-entrancy cannot be detected at the
+call site: a nested call and a legitimately concurrent one look identical. The
+guard therefore watches for the *stall* rather than the call. An operation
+enqueued behind a running one arms a timer; if the queue has not advanced within
+`QUEUE_STALL_TIMEOUT_MS`, it rejects with `RepositoryDeadlockError`, naming both
+the blocked operation and the one holding the queue. An idle queue arms nothing,
+so the common path is free.
+
+Two properties the implementation depends on: an abandoned operation must never
+run afterwards (the caller has already been told it did not happen), and the
+tail must chain off the *previous* operation rather than off the abandoned one,
+or a merely-slow operation would end up running alongside its successor.
+
+M12's import is the case most likely to meet the timeout legitimately. It should
+raise the constant rather than trip it — but note that a bulk import which
+composes the `*-writes.ts` primitives inside one `write()`, as it must anyway,
+is a single operation and never queues behind itself.
+
 ## The read path: four statements, one window
 
 `assembleNotes` needs a page of notes plus the checklist, image and label rows
@@ -104,6 +129,13 @@ another note's checklist.
 If a future milestone adds a sort order — M11's alternatives, or search
 relevance — it must append a unique tiebreaker. `note-ordering.spec.ts` is the
 guard.
+
+The rule is not confined to the windowed query. `LabelRepository.list` sorts by
+name alone, and label names are explicitly non-unique, so two same-named labels
+could swap places between reads; the M01–M10 review added the same `id`
+tiebreaker there. `LabelsStore` shares that comparator by importing
+`compareLabels` rather than restating it, because the two encodings had already
+drifted once.
 
 `notes.id` is `TEXT` and not a rowid alias, so the tiebreaker costs an
 index-ordered scan rather than being free. Accepted for v1; whether to append
@@ -213,7 +245,8 @@ RepositoryError
 ├── EntityNotFoundError      kind + id
 ├── ConstraintViolationError operation + cause
 ├── NotebookNotEmptyError    notebookId + noteCount
-└── DefaultNotebookError     notebookId
+├── DefaultNotebookError     notebookId
+└── RepositoryDeadlockError  blocked + running
 ```
 
 **Branch with `instanceof`, never on `error.name`.** Each class sets its name
@@ -236,10 +269,14 @@ error as `cause`, and nothing that looks like a portable code.
 If M06 genuinely needs to tell a foreign-key failure from a `UNIQUE` failure in
 the UI, that needs a per-adapter mapper and three sets of fixtures. Do it then.
 
-`NestedTransactionError` is exempt from wrapping. The queue is supposed to make
-it unreachable, so if it ever surfaces it is a bug in `repository-context.ts`,
-and burying it inside a `ConstraintViolationError` would send the next reader to
-the schema instead.
+`NestedTransactionError` and `RepositoryDeadlockError` are exempt from wrapping.
+Both mean a bug in this layer rather than anything the database refused, so
+burying either inside a `ConstraintViolationError` would send the next reader to
+the schema instead. The queue is supposed to make `NestedTransactionError`
+unreachable — and since the M01–M10 review it genuinely is: `withTransaction`
+used to leak the adapter into its `WeakSet` whenever `BEGIN` itself failed, which
+turned one transient failure into a connection that threw on every later write
+until the app restarted.
 
 ## What has no repository, and why
 

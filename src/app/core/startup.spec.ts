@@ -1,6 +1,6 @@
 import { ApplicationInitStatus } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { DATABASE_ADAPTER } from './database/database-adapter';
 import { NodeSqliteAdapter } from './database/node-sqlite.adapter';
@@ -32,6 +32,10 @@ describe('provideStartup', () => {
     adapter = new NodeSqliteAdapter();
     await adapter.open();
     await runMigrations(adapter);
+  });
+
+  afterEach(async () => {
+    await adapter.close();
   });
 
   /**

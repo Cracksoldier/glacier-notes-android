@@ -36,6 +36,23 @@ Both readers of `displayOrder` — the editor (`checklist-editor.component.ts:16
 and the card (`note-card.component.ts:209`) — pass the same setting, so the two
 never disagree about what the list looks like.
 
+### The rule is enforced, not only stated
+
+Add and delete used to splice the *displayed* array and `resequence` it, which
+wrote the grouping into `sortOrder` — so with `moveCheckedToBottom` on, removing
+or inserting an unrelated row stranded every ticked item at the bottom for good,
+and unticking it no longer brought it back. It was the drag exception leaking
+into two gestures that are not reorderings.
+
+`insertItemAfter` and `removeItem` (`checklist-model.ts`) now take an **item id**
+and rebuild from the canonical order, so `reorderItems` is once again the only
+function that can commit the grouping. Anything new that edits the array must go
+through one of those three rather than through `displayed()`.
+
+The visible cost is small and deliberate: a row inserted after a checked anchor
+appears at that anchor's canonical successor, which with the grouping on is not
+the row below it on screen.
+
 ## Every mutation rewrites the whole array
 
 `replaceChecklist` (`note-writes.ts:212`) deletes every row for the note and

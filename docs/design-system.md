@@ -50,13 +50,24 @@ contrast ratios:
 | `#4cc9f0` on `#0d1b2a` (dark) | 8.89:1 | pass |
 | `#0d8ecf` on `#f4f7fa` | 3.37:1 | fail |
 | `#0d8ecf` on `#ffffff` | 3.63:1 | fail |
-| `#0b7db6` on `#ffffff` | 4.54:1 | pass |
 
 `--ion-color-primary` keeps the desktop's `#0d8ecf` so the palette stays
-traceable, but `--ion-color-primary-contrast` is `#ffffff` rather than the
-desktop's `--color-bg`, and text-bearing accent fills use
-`--glacier-accent-strong` (`#0b7db6` in light, `#4cc9f0` in dark). This is the one
-place the Android port knowingly departs from the desktop tokens.
+traceable, and `--ion-color-primary-contrast` is `#ffffff` rather than the
+desktop's `--color-bg`. That is the one place the Android port knowingly departs
+from the desktop tokens.
+
+**The constraint that follows: nothing may draw text on the accent in the light
+theme.** No `color="primary"` and no `var(--ion-color-primary)` appears anywhere
+in `src/app/`, so the accent reaches the screen only through Ionic's own
+defaults — the FAB, the segment indicator, toggles and checkboxes. Every one of
+those is an icon or an indicator, and 3.63:1 clears the 3:1 WCAG bar for
+non-text contrast. A future accent-filled *button with a label* would not, and
+would need a darker fill (`#0b7db6` measures 4.54:1 on white) introduced at that
+point.
+
+An earlier `--glacier-accent-strong` token existed for exactly that case and was
+removed at the M01–M10 review: it never had a consumer, and in the light theme
+it duplicated `--ion-color-primary-shade` anyway.
 
 ## Typography
 

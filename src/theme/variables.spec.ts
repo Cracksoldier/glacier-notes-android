@@ -41,9 +41,4 @@ describe('Ionic theme variables', () => {
       );
     }
   });
-
-  it('provides an accent that clears WCAG AA on white', () => {
-    expect(tokens('theme-light').get('--glacier-accent-strong')).toBe('#0b7db6');
-    expect(tokens('theme-dark').get('--glacier-accent-strong')).toBe('#4cc9f0');
-  });
 });
