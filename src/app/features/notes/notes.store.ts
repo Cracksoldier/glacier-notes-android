@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import type { Note } from '../../core/models/note';
+import type { NoteView } from '../../core/repositories/note-queries';
 import { NotebookRepository } from '../../core/repositories/notebook.repository';
 import { NoteRepository, type NoteUpdatePatch } from '../../core/repositories/note.repository';
 
@@ -25,18 +26,26 @@ export class NotesStore {
   private readonly all = signal<readonly Note[]>([]);
   private readonly state = signal<NotesStatus>('loading');
   private readonly failedSave = signal(false);
+  private readonly currentView = signal<NoteView>({ kind: 'active' });
 
   readonly notes = this.all.asReadonly();
   readonly status = this.state.asReadonly();
   readonly saveFailed = this.failedSave.asReadonly();
+  readonly view = this.currentView.asReadonly();
 
   readonly pinned = computed(() => this.all().filter((note) => note.pinned));
   readonly unpinned = computed(() => this.all().filter((note) => !note.pinned));
 
+  /** Switches which notes the list holds. The editor keeps writing through it either way. */
+  setView(view: NoteView): Promise<void> {
+    this.currentView.set(view);
+    return this.load();
+  }
+
   async load(): Promise<void> {
     this.state.set('loading');
     try {
-      this.all.set(await this.notesRepository.list({ kind: 'active' }));
+      this.all.set(await this.notesRepository.list(this.currentView()));
       this.state.set('ready');
     } catch {
       this.all.set([]);
@@ -44,9 +53,15 @@ export class NotesStore {
     }
   }
 
-  /** Into the default notebook. Choosing one is M07. */
+  /**
+   * Into the notebook being viewed, or the default one when the view is not a
+   * notebook. Creating a note inside a notebook and having it land elsewhere
+   * would read as a bug.
+   */
   async createTextNote(): Promise<Note> {
-    const notebookId = await this.notebooks.getDefaultId();
+    const view = this.currentView();
+    const notebookId =
+      view.kind === 'notebook' ? view.notebookId : await this.notebooks.getDefaultId();
     const note = await this.notesRepository.create({ notebookId, type: 'text' });
     this.all.set(sortActiveNotes([note, ...this.all()]));
     return note;
@@ -58,12 +73,20 @@ export class NotesStore {
    */
   async save(id: string, patch: NoteUpdatePatch): Promise<void> {
     try {
-      const saved = await this.notesRepository.update(id, patch);
-      this.all.set(sortActiveNotes(this.all().map((note) => (note.id === id ? saved : note))));
+      this.replace(await this.notesRepository.update(id, patch));
       this.failedSave.set(false);
     } catch {
       this.failedSave.set(true);
     }
+  }
+
+  /**
+   * Moving a note out of the notebook currently being viewed drops it from the
+   * list, which is what `replace` handles. Unlike `save` this rethrows: a move
+   * is an explicit action, not a background write, so it needs to surface.
+   */
+  async moveNote(id: string, notebookId: string): Promise<void> {
+    this.replace(await this.notesRepository.move(id, notebookId));
   }
 
   async discard(id: string): Promise<void> {
@@ -73,6 +96,30 @@ export class NotesStore {
 
   clearSaveError(): void {
     this.failedSave.set(false);
+  }
+
+  /**
+   * Swaps a freshly written note into the list, then drops it if a notebook view
+   * no longer covers it.
+   *
+   * The one `notebookId` comparison is the *only* view predicate held in
+   * TypeScript, deliberately. A general `matchesView()` would be a second
+   * encoding of the `WHERE` clauses in `note-queries.ts`, next to the one
+   * `compareActiveNotes` already keeps of their `ORDER BY` — and
+   * `docs/repositories.md` names that duplication as the layer's standing
+   * hazard. Archiving and trashing arrive at M08 and belong in a reload, not
+   * here.
+   */
+  private replace(saved: Note): void {
+    const view = this.currentView();
+    const next = this.all().map((note) => (note.id === saved.id ? saved : note));
+    this.all.set(
+      sortActiveNotes(
+        view.kind === 'notebook'
+          ? next.filter((note) => note.notebookId === view.notebookId)
+          : next,
+      ),
+    );
   }
 }
 

@@ -6,6 +6,8 @@ import { MemoryPreferencesAdapter } from '../../core/preferences/memory-preferen
 import { PREFERENCES_ADAPTER } from '../../core/preferences/preferences-adapter';
 import type { Note } from '../../core/models/note';
 import { createTestRepositories, type TestRepositories } from '../../core/repositories/testing';
+import { NotebookPrompts } from '../notebooks/notebook-prompts';
+import { NotebooksStore } from '../notebooks/notebooks.store';
 import { NoteEditorPage } from './note-editor.page';
 import { NotesStore } from './notes.store';
 
@@ -35,19 +37,29 @@ function background(): void {
 describe('NoteEditorPage', () => {
   let repositories: TestRepositories;
   let store: NotesStore;
+  let notebooks: NotebooksStore;
+  /** An Ionic action sheet cannot be presented under jsdom; only its answer matters here. */
+  let chosenNotebookId: string | undefined;
 
   beforeEach(async () => {
     capacitorApp.listeners.length = 0;
+    chosenNotebookId = undefined;
 
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         { provide: PREFERENCES_ADAPTER, useValue: new MemoryPreferencesAdapter() },
+        {
+          provide: NotebookPrompts,
+          useValue: { pickNotebook: () => Promise.resolve(chosenNotebookId) },
+        },
       ],
     });
     repositories = await createTestRepositories();
     store = TestBed.inject(NotesStore);
+    notebooks = TestBed.inject(NotebooksStore);
     await store.load();
+    await notebooks.load();
   });
 
   afterEach(async () => {
@@ -240,6 +252,60 @@ describe('NoteEditorPage', () => {
       expect(fixture.nativeElement.querySelector('button[aria-label="Bold"]').disabled).toBe(true);
       expect(fixture.nativeElement.querySelector('.editor__content')).toBeNull();
       expect(fixture.nativeElement.querySelector('.editor__preview')).not.toBeNull();
+    });
+  });
+
+  describe('the notebook chip', () => {
+    it('names the notebook the note is in', async () => {
+      const note = await store.createTextNote();
+      const fixture = await open(note);
+
+      expect(fixture.nativeElement.querySelector('.editor__notebook').textContent).toContain(
+        'Notes',
+      );
+    });
+
+    it('flushes a pending edit before moving, so the move owns the newer updatedAt', async () => {
+      const work = await notebooks.create('Work');
+      const note = await store.createTextNote();
+      const fixture = await open(note);
+
+      const writes: string[] = [];
+      const update = repositories.notes.update.bind(repositories.notes);
+      const move = repositories.notes.move.bind(repositories.notes);
+      vi.spyOn(repositories.notes, 'update').mockImplementation((id, patch) => {
+        writes.push('update');
+        return update(id, patch);
+      });
+      vi.spyOn(repositories.notes, 'move').mockImplementation((id, notebookId) => {
+        writes.push('move');
+        return move(id, notebookId);
+      });
+
+      type(fixture, '.editor__content', 'typed then moved');
+      chosenNotebookId = work.id;
+      (fixture.nativeElement.querySelector('.editor__notebook') as HTMLButtonElement).click();
+      await settle();
+      fixture.detectChanges();
+
+      expect(writes).toEqual(['update', 'move']);
+      const stored = await repositories.notes.get(note.id);
+      expect(stored.content).toBe('typed then moved');
+      expect(stored.notebookId).toBe(work.id);
+      expect(fixture.nativeElement.querySelector('.editor__notebook').textContent).toContain(
+        'Work',
+      );
+    });
+
+    it('leaves the note where it is when the sheet is dismissed', async () => {
+      const note = await store.createTextNote();
+      const fixture = await open(note);
+      const move = vi.spyOn(repositories.notes, 'move');
+
+      (fixture.nativeElement.querySelector('.editor__notebook') as HTMLButtonElement).click();
+      await settle();
+
+      expect(move).not.toHaveBeenCalled();
     });
   });
 

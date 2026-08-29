@@ -1,22 +1,126 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { FaIconComponent } from '@fortawesome/angular-fontawesome';
+import {
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonFab,
+  IonFabButton,
+  IonHeader,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonMenuButton,
+  IonNote,
+  IonTitle,
+  IonToolbar,
+} from '@ionic/angular';
 
 import { I18nService } from '../../core/localization/i18n.service';
-import { PlaceholderPageComponent } from '../../shared/components/placeholder-page.component';
-import { faBook } from '../../shared/utilities/glacier-icons';
+import type { Notebook } from '../../core/models/notebook';
+import { EmptyStateComponent } from '../../shared/components/empty-state.component';
+import { faBook, faEllipsisVertical, faPlus, faStar } from '../../shared/utilities/glacier-icons';
+import { NotebookPrompts } from './notebook-prompts';
+import { NotebooksStore } from './notebooks.store';
 
 @Component({
   selector: 'app-notebooks-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PlaceholderPageComponent],
+  imports: [
+    EmptyStateComponent,
+    FaIconComponent,
+    IonButton,
+    IonButtons,
+    IonContent,
+    IonFab,
+    IonFabButton,
+    IonHeader,
+    IonItem,
+    IonLabel,
+    IonList,
+    IonMenuButton,
+    IonNote,
+    IonTitle,
+    IonToolbar,
+  ],
   template: `
-    <app-placeholder-page
-      [heading]="i18n.t('sidebar.notebooks')"
-      [icon]="icon"
-      [message]="i18n.t('placeholder.notebooks')"
-    />
+    <ion-header>
+      <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-menu-button [attr.aria-label]="i18n.t('a11y.openMenu')" />
+        </ion-buttons>
+        <ion-title>{{ i18n.t('sidebar.notebooks') }}</ion-title>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content>
+      @if (store.notebooks().length === 0) {
+        <app-empty-state [icon]="bookIcon" [title]="i18n.t('notebook.none')" />
+      } @else {
+        <ion-list [inset]="true">
+          @for (notebook of store.notebooks(); track notebook.id) {
+            <ion-item button="true" (click)="open(notebook)">
+              <fa-icon slot="start" [icon]="bookIcon" />
+              <ion-label>{{ notebook.name }}</ion-label>
+              @if (notebook.id === store.defaultId()) {
+                <ion-note slot="end" class="notebooks__default">
+                  <fa-icon [icon]="defaultIcon" />
+                  {{ i18n.t('notebook.default') }}
+                </ion-note>
+              }
+              <ion-button
+                slot="end"
+                fill="clear"
+                (click)="showActions(notebook, $event)"
+                [attr.aria-label]="i18n.t('a11y.notebookActions')"
+              >
+                <fa-icon [icon]="actionsIcon" />
+              </ion-button>
+            </ion-item>
+          }
+        </ion-list>
+      }
+
+      <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+        <ion-fab-button (click)="create()" [attr.aria-label]="i18n.t('a11y.newNotebook')">
+          <fa-icon [icon]="addIcon" />
+        </ion-fab-button>
+      </ion-fab>
+    </ion-content>
+  `,
+  styles: `
+    .notebooks__default {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
   `,
 })
 export class NotebooksPage {
   readonly i18n = inject(I18nService);
-  readonly icon = faBook;
+  readonly store = inject(NotebooksStore);
+  private readonly prompts = inject(NotebookPrompts);
+  private readonly router = inject(Router);
+
+  readonly bookIcon = faBook;
+  readonly addIcon = faPlus;
+  readonly actionsIcon = faEllipsisVertical;
+  readonly defaultIcon = faStar;
+
+  open(notebook: Notebook): void {
+    void this.router.navigate(['/notebooks', notebook.id]);
+  }
+
+  showActions(notebook: Notebook, event: Event): void {
+    // Without this the row's own click fires as well and navigates away
+    // underneath the sheet.
+    event.stopPropagation();
+    void this.prompts.actions(notebook);
+  }
+
+  create(): void {
+    void this.prompts.create();
+  }
 }

@@ -16,6 +16,7 @@ import {
   type NotebookUpdatePatch,
   purgeNotesInNotebook,
   readDefaultNotebookId,
+  writeDefaultNotebookId,
 } from './notebook-writes';
 import { RepositoryContext } from './repository-context';
 import {
@@ -67,6 +68,23 @@ export class NotebookRepository {
         throw new RepositoryError('No default notebook is set');
       }
       return id;
+    });
+  }
+
+  /**
+   * Archived and trashed notes included, matching what `delete()` counts — the
+   * delete dialog has to name the same number that would block the delete.
+   */
+  countNotes(id: string): Promise<number> {
+    return this.context.read('notebooks.countNotes', (adapter) =>
+      countNotesInNotebook(adapter, id),
+    );
+  }
+
+  setDefaultId(id: string): Promise<void> {
+    return this.context.write('notebooks.setDefaultId', async (adapter) => {
+      await requireNotebookExists(adapter, id);
+      await writeDefaultNotebookId(adapter, id);
     });
   }
 

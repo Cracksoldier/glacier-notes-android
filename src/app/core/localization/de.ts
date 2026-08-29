@@ -11,6 +11,7 @@ export const de: Record<TranslationKey, string> = {
   'sidebar.notebooks': 'Notizbücher',
   'sidebar.allNotebooks': 'Alle Notizbücher',
   'sidebar.newNotebook': 'Neues Notizbuch',
+  'sidebar.notebookName': 'Name des Notizbuchs',
   'sidebar.labels': 'Labels',
   'sidebar.allLabels': 'Alle Labels',
   'sidebar.newLabel': 'Neues Label',
@@ -28,6 +29,23 @@ export const de: Record<TranslationKey, string> = {
   'grid.others': 'Weitere',
 
   'card.emptyNote': 'Leere Notiz',
+
+  'notebook.deleteTitle': 'Notizbuch "{name}" löschen?',
+  'notebook.containsOne': 'Dieses Notizbuch enthält 1 Notiz.',
+  'notebook.containsMany': 'Dieses Notizbuch enthält {count} Notizen.',
+  'notebook.deleteNotes': 'Notizen ebenfalls löschen',
+  'notebook.moveTo': 'Verschieben nach:',
+  'notebook.empty': 'Dieses Notizbuch ist leer.',
+  'notebook.nameRequired': 'Gib einen Namen für das Notizbuch ein.',
+  'notebook.create': 'Neues Notizbuch',
+  'notebook.default': 'Standard-Notizbuch',
+  'notebook.setDefault': 'Als Standard festlegen',
+  'notebook.defaultHint':
+    'Neue Notizen landen hier, sofern du sie nicht in einem Notizbuch erstellst.',
+  'notebook.none': 'Noch keine Notizbücher',
+
+  'move.heading': 'Verschieben nach',
+  'move.empty': 'Keine anderen Notizbücher',
 
   'editor.titlePlaceholder': 'Titel',
   'editor.contentPlaceholder': 'Notiz schreiben…',
@@ -48,8 +66,10 @@ export const de: Record<TranslationKey, string> = {
   'mdToolbar.code': 'Code',
 
   'common.back': 'Zurück',
+  'common.cancel': 'Abbrechen',
+  'common.delete': 'Löschen',
+  'common.rename': 'Umbenennen',
 
-  'placeholder.notebooks': 'Notizbücher ordnen deine Notizen.',
   'placeholder.labels': 'Mit Labels kannst du Notizen notizbuchübergreifend kennzeichnen.',
   'placeholder.search': 'Volltextsuche über Titel, Inhalte und Checklisten.',
   'placeholder.importExport':
@@ -73,4 +93,7 @@ export const de: Record<TranslationKey, string> = {
   'a11y.language': 'Sprache',
   'a11y.noteLayout': 'Notizlayout',
   'a11y.formatting': 'Formatierung',
+  'a11y.notebookActions': 'Aktionen für das Notizbuch',
+  'a11y.noteNotebook': 'Notizbuch dieser Notiz',
+  'a11y.newNotebook': 'Neues Notizbuch',
 };

@@ -43,6 +43,23 @@ describe('NotebookRepository', () => {
     ]);
   });
 
+  it('moves the default to another notebook and then refuses to delete that one', async () => {
+    const work = await repos.notebooks.create('Work');
+    await repos.notebooks.setDefaultId(work.id);
+
+    expect(await repos.notebooks.getDefaultId()).toBe(work.id);
+    await expect(repos.notebooks.delete(work.id)).rejects.toBeInstanceOf(DefaultNotebookError);
+    // The notebook that was the default is now deletable.
+    expect(await repos.notebooks.delete(repos.defaultNotebookId)).toEqual([]);
+  });
+
+  it('refuses to point the default at a notebook that does not exist', async () => {
+    await expect(repos.notebooks.setDefaultId(crypto.randomUUID())).rejects.toBeInstanceOf(
+      EntityNotFoundError,
+    );
+    expect(await repos.notebooks.getDefaultId()).toBe(repos.defaultNotebookId);
+  });
+
   it('refuses to delete the default notebook', async () => {
     await expect(repos.notebooks.delete(repos.defaultNotebookId)).rejects.toBeInstanceOf(
       DefaultNotebookError,

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import {
@@ -15,6 +15,7 @@ import {
 
 import { I18nService } from '../../core/localization/i18n.service';
 import { SettingsStore } from '../../core/preferences/settings.store';
+import { NotebooksStore } from '../notebooks/notebooks.store';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 import {
   faBars,
@@ -51,7 +52,7 @@ import { NotesStore } from './notes.store';
         <ion-buttons slot="start">
           <ion-menu-button [attr.aria-label]="i18n.t('a11y.openMenu')" />
         </ion-buttons>
-        <ion-title>{{ i18n.t('sidebar.notes') }}</ion-title>
+        <ion-title>{{ title() }}</ion-title>
         <ion-buttons slot="end">
           <ion-button
             (click)="toggleLayout()"
@@ -72,7 +73,7 @@ import { NotesStore } from './notes.store';
         <app-empty-state
           [icon]="emptyIcon"
           [title]="i18n.t('grid.noNotes')"
-          [message]="i18n.t('grid.noNotesHint')"
+          [message]="notebookId() ? i18n.t('notebook.empty') : i18n.t('grid.noNotesHint')"
         />
       } @else {
         <div class="notes" [class.notes--grid]="settings.noteLayout() === 'grid'">
@@ -141,7 +142,11 @@ export class NotesPage {
   readonly i18n = inject(I18nService);
   readonly settings = inject(SettingsStore);
   readonly store = inject(NotesStore);
+  private readonly notebooks = inject(NotebooksStore);
   private readonly router = inject(Router);
+
+  /** Bound from `notebooks/:notebookId`; absent on `/notes`, which spans every notebook. */
+  readonly notebookId = input<string | undefined>(undefined);
 
   readonly emptyIcon = faFileLines;
   readonly searchIcon = faMagnifyingGlass;
@@ -154,8 +159,21 @@ export class NotesPage {
     () => this.store.status() !== 'loading' && this.store.notes().length === 0,
   );
 
+  /** Falls back to the id while the notebook list is still loading. */
+  protected readonly title = computed(() => {
+    const id = this.notebookId();
+    return id ? (this.notebooks.find(id)?.name ?? '') : this.i18n.t('sidebar.notes');
+  });
+
   constructor() {
-    void this.store.load();
+    effect(() => {
+      const id = this.notebookId();
+      void this.store.setView(id ? { kind: 'notebook', notebookId: id } : { kind: 'active' });
+      // No reader yet — the desktop restores the last sidebar selection at
+      // launch, but this app opens on /notes and cold-starting into a notebook
+      // would be surprising. Written so the value is truthful when one arrives.
+      this.settings.setLastSelectedNotebookId(id ?? null);
+    });
   }
 
   toggleLayout(): void {

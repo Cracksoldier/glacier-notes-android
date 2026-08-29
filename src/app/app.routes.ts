@@ -13,6 +13,11 @@ export const routes: Routes = [
     path: 'notebooks',
     loadComponent: () => import('./features/notebooks/notebooks.page').then((m) => m.NotebooksPage),
   },
+  // The notes page filtered to one notebook — the same list, a different view.
+  {
+    path: 'notebooks/:notebookId',
+    loadComponent: () => import('./features/notes/notes.page').then((m) => m.NotesPage),
+  },
   {
     path: 'labels',
     loadComponent: () => import('./features/labels/labels.page').then((m) => m.LabelsPage),

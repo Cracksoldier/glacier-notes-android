@@ -9,31 +9,37 @@
           </header>
 
           <nav class="drawer__nav">
-            @for (section of sections; track section.title) {
-              <p class="drawer__section-title">{{ i18n.t(section.title) }}</p>
+            @for (section of sections(); track section.title) {
+              <p class="drawer__section-title">{{ section.title }}</p>
               @for (entry of section.entries; track entry.path) {
                 <ion-menu-toggle [autoHide]="false">
                   <a
                     class="drawer__item"
                     [routerLink]="entry.path"
                     routerLinkActive="drawer__item--active"
+                    [routerLinkActiveOptions]="{ exact: true }"
                   >
                     <fa-icon [icon]="entry.icon" />
-                    <span>{{ i18n.t(entry.label) }}</span>
+                    <span>{{ entry.label }}</span>
                   </a>
                 </ion-menu-toggle>
               }
               @if (section.createLabel) {
-                <button type="button" class="drawer__item drawer__item--muted" disabled>
+                <button
+                  type="button"
+                  class="drawer__item drawer__item--muted"
+                  [disabled]="!section.onCreate"
+                  (click)="section.onCreate?.()"
+                >
                   <fa-icon [icon]="icons.add" />
-                  <span>{{ i18n.t(section.createLabel) }}</span>
+                  <span>{{ section.createLabel }}</span>
                 </button>
               }
             }
           </nav>
 
           <div class="drawer__footer">
-            @for (entry of footerEntries; track entry.path) {
+            @for (entry of footerEntries(); track entry.path) {
               <ion-menu-toggle [autoHide]="false">
                 <a
                   class="drawer__item"
@@ -41,7 +47,7 @@
                   routerLinkActive="drawer__item--active"
                 >
                   <fa-icon [icon]="entry.icon" />
-                  <span>{{ i18n.t(entry.label) }}</span>
+                  <span>{{ entry.label }}</span>
                 </a>
               </ion-menu-toggle>
             }

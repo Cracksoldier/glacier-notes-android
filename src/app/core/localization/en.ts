@@ -13,6 +13,7 @@ export const en = {
   'sidebar.notebooks': 'Notebooks',
   'sidebar.allNotebooks': 'All notebooks',
   'sidebar.newNotebook': 'New notebook',
+  'sidebar.notebookName': 'Notebook name',
   'sidebar.labels': 'Labels',
   'sidebar.allLabels': 'All labels',
   'sidebar.newLabel': 'New label',
@@ -30,6 +31,25 @@ export const en = {
   'grid.others': 'Others',
 
   'card.emptyNote': 'Empty note',
+
+  'notebook.deleteTitle': 'Delete notebook "{name}"?',
+  'notebook.containsOne': 'This notebook contains 1 note.',
+  'notebook.containsMany': 'This notebook contains {count} notes.',
+  'notebook.deleteNotes': 'Delete the notes too',
+  'notebook.moveTo': 'Move them to:',
+  'notebook.empty': 'This notebook is empty.',
+  // android: the desktop's sidebar edits notebooks inline and never validates,
+  // because an empty inline edit simply reverts. A prompt has to say why.
+  'notebook.nameRequired': 'Enter a name for the notebook.',
+  'notebook.create': 'New notebook',
+  'notebook.default': 'Default notebook',
+  // android: the desktop offers no way to change which notebook is the default.
+  'notebook.setDefault': 'Set as default',
+  'notebook.defaultHint': 'New notes go here unless you create them inside a notebook.',
+  'notebook.none': 'No notebooks yet',
+
+  'move.heading': 'Move to',
+  'move.empty': 'No other notebooks',
 
   'editor.titlePlaceholder': 'Title',
   'editor.contentPlaceholder': 'Take a note…',
@@ -54,9 +74,11 @@ export const en = {
   'mdToolbar.code': 'Code',
 
   'common.back': 'Back',
+  'common.cancel': 'Cancel',
+  'common.delete': 'Delete',
+  'common.rename': 'Rename',
 
   // android: placeholder copy for destinations the desktop reaches differently.
-  'placeholder.notebooks': 'Notebooks organise your notes.',
   'placeholder.labels': 'Labels let you tag notes across notebooks.',
   'placeholder.search': 'Full-text search over titles, bodies and checklists.',
   'placeholder.importExport': 'Exchange .glacier.json archives with Glacier Notes on the desktop.',
@@ -80,6 +102,9 @@ export const en = {
   'a11y.language': 'Language',
   'a11y.noteLayout': 'Note layout',
   'a11y.formatting': 'Formatting',
+  'a11y.notebookActions': 'Notebook actions',
+  'a11y.noteNotebook': 'Notebook of this note',
+  'a11y.newNotebook': 'New notebook',
 } as const;
 
 export type TranslationKey = keyof typeof en;

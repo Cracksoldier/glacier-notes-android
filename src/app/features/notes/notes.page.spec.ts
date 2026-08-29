@@ -6,6 +6,7 @@ import { MemoryPreferencesAdapter } from '../../core/preferences/memory-preferen
 import { PREFERENCES_ADAPTER } from '../../core/preferences/preferences-adapter';
 import { SettingsStore } from '../../core/preferences/settings.store';
 import { createTestRepositories, type TestRepositories } from '../../core/repositories/testing';
+import { NotebooksStore } from '../notebooks/notebooks.store';
 import { NotesPage } from './notes.page';
 import { NotesStore } from './notes.store';
 
@@ -31,8 +32,13 @@ describe('NotesPage', () => {
    * that read has settled; awaiting a second load is the deterministic way to
    * get there.
    */
-  async function render(): Promise<ComponentFixture<NotesPage>> {
+  async function render(notebookId?: string): Promise<ComponentFixture<NotesPage>> {
     const fixture = TestBed.createComponent(NotesPage);
+    if (notebookId !== undefined) {
+      fixture.componentRef.setInput('notebookId', notebookId);
+      await TestBed.inject(NotebooksStore).load();
+    }
+    fixture.detectChanges();
     await TestBed.inject(NotesStore).load();
     fixture.detectChanges();
     return fixture;
@@ -92,12 +98,53 @@ describe('NotesPage', () => {
     expect(host.querySelectorAll('.notes__heading')).toHaveLength(0);
   });
 
+  describe('filtered to one notebook', () => {
+    it('shows only that notebook, under its name', async () => {
+      const work = await repositories.notebooks.create('Work');
+      await repositories.notes.create({
+        notebookId: repositories.defaultNotebookId,
+        type: 'text',
+        title: 'Groceries',
+      });
+      await repositories.notes.create({ notebookId: work.id, type: 'text', title: 'Standup' });
+
+      const host: HTMLElement = (await render(work.id)).nativeElement;
+
+      expect(host.querySelector('ion-title')?.textContent).toContain('Work');
+      expect(host.querySelectorAll('app-note-card')).toHaveLength(1);
+      expect(host.textContent).toContain('Standup');
+      expect(host.textContent).not.toContain('Groceries');
+    });
+
+    it('uses the notebook empty state rather than the all-notes hint', async () => {
+      const work = await repositories.notebooks.create('Work');
+
+      const host: HTMLElement = (await render(work.id)).nativeElement;
+
+      expect(host.querySelector('app-empty-state')?.textContent).toContain(
+        'This notebook is empty',
+      );
+    });
+
+    it('records the notebook as the last selected one', async () => {
+      const work = await repositories.notebooks.create('Work');
+      const settings = TestBed.inject(SettingsStore);
+
+      await render(work.id);
+
+      expect(settings.lastSelectedNotebookId()).toBe(work.id);
+    });
+  });
+
   it('writes the layout toggle through to the settings store', async () => {
     const settings = TestBed.inject(SettingsStore);
     await repositories.notes.create({ notebookId: repositories.defaultNotebookId, type: 'text' });
     const fixture = await render();
     const host: HTMLElement = fixture.nativeElement;
-    const toggle = host.querySelector<HTMLElement>('ion-button[aria-label="Note layout"]');
+    // Queried by position: once Ionic hydrates an `ion-button` it moves the
+    // aria-* attributes off the host onto its inner native button, so an
+    // `[aria-label=...]` selector only matches before hydration.
+    const toggle = host.querySelector<HTMLElement>('ion-buttons[slot="end"] ion-button');
 
     expect(settings.noteLayout()).toBe('list');
 
@@ -105,7 +152,6 @@ describe('NotesPage', () => {
     fixture.detectChanges();
 
     expect(settings.noteLayout()).toBe('grid');
-    expect(toggle?.getAttribute('aria-pressed')).toBe('true');
     expect(host.querySelector('.notes')?.classList).toContain('notes--grid');
   });
 });

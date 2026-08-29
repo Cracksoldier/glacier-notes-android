@@ -47,6 +47,65 @@ describe('NotesStore', () => {
       expect(note.type).toBe('text');
       expect(store.notes().map((entry) => entry.id)).toEqual([note.id]);
     });
+
+    it('creates into the notebook being viewed rather than the default one', async () => {
+      const work = await repositories.notebooks.create('Work');
+      await store.setView({ kind: 'notebook', notebookId: work.id });
+
+      const note = await store.createTextNote();
+
+      expect(note.notebookId).toBe(work.id);
+    });
+  });
+
+  describe('setView', () => {
+    it('narrows the list to one notebook', async () => {
+      const work = await repositories.notebooks.create('Work');
+      const inWork = await repositories.notes.create({ notebookId: work.id, type: 'text' });
+      const elsewhere = await repositories.notes.create({
+        notebookId: repositories.defaultNotebookId,
+        type: 'text',
+      });
+
+      await store.setView({ kind: 'notebook', notebookId: work.id });
+      expect(store.notes().map((note) => note.id)).toEqual([inWork.id]);
+
+      await store.setView({ kind: 'active' });
+      expect(store.notes().map((note) => note.id)).toContain(elsewhere.id);
+    });
+  });
+
+  describe('moveNote', () => {
+    it('drops the note from the notebook view it left', async () => {
+      const work = await repositories.notebooks.create('Work');
+      await store.setView({ kind: 'notebook', notebookId: work.id });
+      const note = await store.createTextNote();
+
+      await store.moveNote(note.id, repositories.defaultNotebookId);
+
+      expect(store.notes()).toEqual([]);
+      expect((await repositories.notes.get(note.id)).notebookId).toBe(
+        repositories.defaultNotebookId,
+      );
+    });
+
+    it('keeps the note in the active view, which spans every notebook', async () => {
+      const work = await repositories.notebooks.create('Work');
+      const note = await store.createTextNote();
+
+      await store.moveNote(note.id, work.id);
+
+      expect(store.notes().map((entry) => entry.id)).toEqual([note.id]);
+      expect(store.notes()[0]?.notebookId).toBe(work.id);
+    });
+
+    // A background autosave swallows its failure; an explicit move must not.
+    it('rethrows a failed move', async () => {
+      const note = await store.createTextNote();
+      vi.spyOn(repositories.notes, 'move').mockRejectedValue(new Error('gone'));
+
+      await expect(store.moveNote(note.id, repositories.defaultNotebookId)).rejects.toThrow();
+    });
   });
 
   describe('save', () => {
@@ -83,6 +142,18 @@ describe('NotesStore', () => {
 
       expect(store.notes().map((note) => note.id)).toEqual([first.id, second.id]);
       vi.useRealTimers();
+    });
+
+    // The editor writes through the store from either view, so a save that
+    // happens to move nothing must not disturb a notebook view either.
+    it('keeps a saved note in the notebook view it still belongs to', async () => {
+      const work = await repositories.notebooks.create('Work');
+      await store.setView({ kind: 'notebook', notebookId: work.id });
+      const note = await store.createTextNote();
+
+      await store.save(note.id, { title: 'Sprint plan' });
+
+      expect(store.notes().map((entry) => entry.id)).toEqual([note.id]);
     });
 
     it('flags a failed write and keeps the previous list', async () => {

@@ -68,6 +68,14 @@ export async function readDefaultNotebookId(adapter: DatabaseAdapter): Promise<s
   return row?.default_notebook_id ?? null;
 }
 
+/** The foreign key on `app_state.default_notebook_id` rejects an id that is not a notebook. */
+export async function writeDefaultNotebookId(
+  adapter: DatabaseAdapter,
+  notebookId: string,
+): Promise<void> {
+  await adapter.run('UPDATE app_state SET default_notebook_id = ? WHERE id = 1', [notebookId]);
+}
+
 /**
  * Moves every note out of a notebook — archived and trashed included, since the
  * desktop's `moveAllFromNotebook` spans all three lists (`note-store.ts:91-99`)

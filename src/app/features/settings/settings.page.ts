@@ -11,6 +11,8 @@ import {
   IonNote,
   IonSegment,
   IonSegmentButton,
+  IonSelect,
+  IonSelectOption,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular';
@@ -19,6 +21,7 @@ import { I18nService } from '../../core/localization/i18n.service';
 import type { LanguageCode, ThemeMode } from '../../core/preferences/settings.model';
 import { SettingsStore } from '../../core/preferences/settings.store';
 import { ThemeService } from '../../core/preferences/theme.service';
+import { NotebooksStore } from '../notebooks/notebooks.store';
 
 @Component({
   selector: 'app-settings-page',
@@ -35,6 +38,8 @@ import { ThemeService } from '../../core/preferences/theme.service';
     IonNote,
     IonSegment,
     IonSegmentButton,
+    IonSelect,
+    IonSelectOption,
     IonTitle,
     IonToolbar,
   ],
@@ -97,6 +102,26 @@ import { ThemeService } from '../../core/preferences/theme.service';
       </ion-list>
 
       <ion-list [inset]="true">
+        <ion-list-header>{{ i18n.t('notebook.default') }}</ion-list-header>
+        <ion-item lines="none">
+          <ion-select
+            [value]="notebooks.defaultId()"
+            (ionChange)="onDefaultNotebookChange($event)"
+            [label]="i18n.t('notebook.default')"
+            labelPlacement="stacked"
+            [interfaceOptions]="{ header: i18n.t('notebook.default') }"
+          >
+            @for (notebook of notebooks.notebooks(); track notebook.id) {
+              <ion-select-option [value]="notebook.id">{{ notebook.name }}</ion-select-option>
+            }
+          </ion-select>
+        </ion-item>
+        <ion-item lines="none">
+          <ion-note class="settings__sample">{{ i18n.t('notebook.defaultHint') }}</ion-note>
+        </ion-item>
+      </ion-list>
+
+      <ion-list [inset]="true">
         <ion-item lines="none">
           <ion-note>{{ i18n.t('settings.localOnly') }}</ion-note>
         </ion-item>
@@ -113,6 +138,7 @@ export class SettingsPage {
   readonly i18n = inject(I18nService);
   readonly theme = inject(ThemeService);
   readonly settings = inject(SettingsStore);
+  readonly notebooks = inject(NotebooksStore);
 
   /** Shows what the language choice does to dates before any note exists. */
   readonly sampleDate = new Date().toISOString();
@@ -125,5 +151,17 @@ export class SettingsPage {
   onLanguageChange(event: Event): void {
     const { value } = (event as CustomEvent<{ value: string }>).detail;
     this.settings.setLanguage(value as LanguageCode);
+  }
+
+  /**
+   * The only row on this page that does not write `SettingsStore`. The default
+   * notebook lives in `app_state` because it travels in the `.glacier.json`
+   * envelope, and settings never do.
+   */
+  onDefaultNotebookChange(event: Event): void {
+    const { value } = (event as CustomEvent<{ value: string }>).detail;
+    if (value !== this.notebooks.defaultId()) {
+      void this.notebooks.setDefault(value);
+    }
   }
 }

@@ -22,7 +22,15 @@ import { applyToolbarAction, type ToolbarAction } from '../../core/markdown/mark
 import { MarkdownService } from '../../core/markdown/markdown.service';
 import { NoteRepository } from '../../core/repositories/note.repository';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
-import { faArrowLeft, faCircleQuestion, faEye, faPen } from '../../shared/utilities/glacier-icons';
+import {
+  faArrowLeft,
+  faBook,
+  faCircleQuestion,
+  faEye,
+  faPen,
+} from '../../shared/utilities/glacier-icons';
+import { NotebookPrompts } from '../notebooks/notebook-prompts';
+import { NotebooksStore } from '../notebooks/notebooks.store';
 import { MarkdownToolbarComponent } from './markdown-toolbar.component';
 import { NotesStore } from './notes.store';
 
@@ -84,6 +92,16 @@ type EditorStatus = 'loading' | 'ready' | 'missing';
             (input)="onTitleInput($any($event.target).value)"
           />
 
+          <button
+            type="button"
+            class="editor__notebook"
+            (click)="chooseNotebook()"
+            [attr.aria-label]="i18n.t('a11y.noteNotebook')"
+          >
+            <fa-icon [icon]="notebookIcon" />
+            <span>{{ notebookName() }}</span>
+          </button>
+
           <app-markdown-toolbar
             class="editor__toolbar"
             [disabled]="previewMode()"
@@ -135,6 +153,21 @@ type EditorStatus = 'loading' | 'ready' | 'missing';
 
     .editor__title:focus {
       outline: none;
+    }
+
+    .editor__notebook {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      align-self: flex-start;
+      margin: 2px 0 6px;
+      padding: 4px 10px;
+      border: none;
+      border-radius: 999px;
+      background-color: var(--color-surface-elevated);
+      color: var(--color-text-muted);
+      font-family: inherit;
+      font-size: 12px;
     }
 
     .editor__toolbar {
@@ -193,17 +226,25 @@ export class NoteEditorPage implements OnDestroy {
   private readonly notes = inject(NoteRepository);
   private readonly markdown = inject(MarkdownService);
   private readonly router = inject(Router);
+  private readonly notebooks = inject(NotebooksStore);
+  private readonly notebookPrompts = inject(NotebookPrompts);
 
   protected readonly backIcon = faArrowLeft;
   protected readonly previewIcon = faEye;
   protected readonly editIcon = faPen;
   protected readonly missingIcon = faCircleQuestion;
+  protected readonly notebookIcon = faBook;
 
   protected readonly title = signal('');
   protected readonly content = signal('');
   protected readonly previewMode = signal(false);
   protected readonly status = signal<EditorStatus>('loading');
   protected readonly previewHtml = computed(() => this.markdown.render(this.content()));
+
+  private readonly notebookId = signal('');
+  protected readonly notebookName = computed(
+    () => this.notebooks.find(this.notebookId())?.name ?? '',
+  );
 
   private readonly textareaRef = viewChild<ElementRef<HTMLTextAreaElement>>('textarea');
 
@@ -286,6 +327,21 @@ export class NoteEditorPage implements OnDestroy {
     }
   }
 
+  /**
+   * The pending autosave is flushed *before* the move. Both writes bump
+   * `updatedAt`, so a debounce landing afterwards would overwrite the move's
+   * timestamp with an older one and reorder the list wrongly.
+   */
+  protected async chooseNotebook(): Promise<void> {
+    const target = await this.notebookPrompts.pickNotebook(this.notebookId());
+    if (target === undefined) {
+      return;
+    }
+    await this.flush();
+    await this.store.moveNote(this.id(), target);
+    this.notebookId.set(target);
+  }
+
   private async loadNote(id: string): Promise<void> {
     const note = await this.notes.find(id);
     if (!note) {
@@ -294,6 +350,7 @@ export class NoteEditorPage implements OnDestroy {
     }
     this.title.set(note.title);
     this.content.set(note.content);
+    this.notebookId.set(note.notebookId);
     this.status.set('ready');
   }
 
