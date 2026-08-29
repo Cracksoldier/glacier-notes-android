@@ -205,6 +205,13 @@ export const en = {
   'a11y.noteImages': 'Images in this note',
   'a11y.trashAutoPurge': 'Delete trashed notes after',
   'a11y.emptyTrash': 'Empty trash',
+  // A card is one button, which hides its own heading, preview and labels from
+  // assistive technology. These restate what it hides.
+  'a11y.notePinned': 'Pinned',
+  'a11y.noteLabelList': 'Labels: {names}',
+  // "Images: 1" rather than "{count} images", which has no singular here.
+  'a11y.noteImageCount': 'Images: {count}',
+  'a11y.checklistItem': 'Item {position}',
 } as const;
 
 export type TranslationKey = keyof typeof en;

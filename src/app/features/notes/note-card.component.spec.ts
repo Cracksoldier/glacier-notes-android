@@ -216,6 +216,48 @@ describe('NoteCardComponent', () => {
     expect(unknown.querySelector<HTMLElement>('.note-card')?.style.backgroundColor).toBe('');
   });
 
+  /**
+   * `role="button"` hides the card's own heading, preview and label list from
+   * assistive technology, so the label has to say everything they said.
+   */
+  describe('the accessible name', () => {
+    function label(note: Partial<Note>): string {
+      return (render(note).nativeElement as HTMLElement).getAttribute('aria-label') ?? '';
+    }
+
+    it('is a button that can be reached by keyboard', () => {
+      const host: HTMLElement = render().nativeElement;
+
+      expect(host.getAttribute('role')).toBe('button');
+      expect(host.getAttribute('tabindex')).toBe('0');
+    });
+
+    it('leads with the title and names the pin, the labels and the images', async () => {
+      const work = await labels.create('Work');
+      await repositories.files.write('11111111-2222-3333-4444-555555555555', 'QUJD', 'image/png');
+
+      expect(
+        label({
+          title: 'Groceries',
+          pinned: true,
+          labels: [work.id],
+          imageIds: ['11111111-2222-3333-4444-555555555555'],
+        }),
+      ).toBe('Groceries. Pinned. Labels: Work. Images: 1');
+    });
+
+    it('falls back to the first line, then the first row, then the empty note text', () => {
+      expect(label({ content: 'milk\neggs' })).toBe('milk');
+      expect(
+        label({
+          type: 'checklist',
+          checklist: [{ id: 'a', text: 'milk', checked: false, sortOrder: 0 }],
+        }),
+      ).toBe('milk');
+      expect(label({})).toBe('Empty note');
+    });
+  });
+
   describe('the gesture', () => {
     it('opens the note on a tap', () => {
       const fixture = render();
@@ -268,6 +310,40 @@ describe('NoteCardComponent', () => {
       vi.advanceTimersByTime(500);
 
       expect(pressed).not.toHaveBeenCalled();
+    });
+
+    /**
+     * The long press is the only route to the actions sheet and it needs a
+     * pointer, so without a key equivalent the sheet is unreachable to anyone
+     * navigating by keyboard or assistive technology.
+     */
+    it.each([
+      ['Enter', 'open'],
+      [' ', 'open'],
+      ['ContextMenu', 'longPress'],
+    ] as const)('maps %s onto %s', (key, expected) => {
+      const fixture = render();
+      const fired: string[] = [];
+      fixture.componentInstance.open.subscribe(() => fired.push('open'));
+      fixture.componentInstance.longPress.subscribe(() => fired.push('longPress'));
+
+      (fixture.nativeElement as HTMLElement).dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true }),
+      );
+
+      expect(fired).toEqual([expected]);
+    });
+
+    it('also reaches the actions through Shift+F10', () => {
+      const fixture = render();
+      const pressed = vi.fn();
+      fixture.componentInstance.longPress.subscribe(pressed);
+
+      (fixture.nativeElement as HTMLElement).dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true }),
+      );
+
+      expect(pressed).toHaveBeenCalledTimes(1);
     });
 
     it('drops a pending press when the card is destroyed mid-gesture', () => {

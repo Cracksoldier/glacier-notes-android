@@ -57,6 +57,7 @@ import {
               [class.checklist__text--checked]="item.checked"
               [value]="item.text"
               [placeholder]="i18n.t('checklist.itemPlaceholder')"
+              [attr.aria-label]="i18n.t('a11y.checklistItem', { position: i + 1 })"
               (input)="onTextInput(item, $any($event.target).value)"
               (keydown)="onKeydown($event, i)"
             />

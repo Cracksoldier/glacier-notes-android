@@ -114,6 +114,14 @@ describe('ChecklistEditorComponent', () => {
     expect(items()).toEqual([item('a', 'first', 0)]);
   });
 
+  // Every row's placeholder is identical, so without this a ten-item list
+  // announces ten indistinguishable fields.
+  it('gives each text field a positional label', () => {
+    render([item('a', 'first', 0), item('b', 'second', 1)]);
+
+    expect(texts().map((input) => input.getAttribute('aria-label'))).toEqual(['Item 1', 'Item 2']);
+  });
+
   it('groups checked items last for display only', () => {
     render([item('a', 'first', 0, true), item('b', 'second', 1)], true);
 

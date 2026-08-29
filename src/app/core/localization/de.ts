@@ -184,4 +184,8 @@ export const de: Record<TranslationKey, string> = {
   'a11y.noteImages': 'Bilder in dieser Notiz',
   'a11y.trashAutoPurge': 'Notizen im Papierkorb löschen nach',
   'a11y.emptyTrash': 'Papierkorb leeren',
+  'a11y.notePinned': 'Angeheftet',
+  'a11y.noteLabelList': 'Labels: {names}',
+  'a11y.noteImageCount': 'Bilder: {count}',
+  'a11y.checklistItem': 'Eintrag {position}',
 };

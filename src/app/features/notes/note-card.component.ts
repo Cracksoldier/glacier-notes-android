@@ -37,11 +37,15 @@ const CARD_IMAGE_LIMIT = 3;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FaIconComponent],
   host: {
+    role: 'button',
+    tabindex: '0',
+    '[attr.aria-label]': 'ariaLabel()',
     '(pointerdown)': 'onDown($event)',
     '(pointermove)': 'onMove($event)',
     '(pointerup)': 'onUp()',
     '(pointercancel)': 'onCancel()',
     '(click)': 'onClick()',
+    '(keydown)': 'onKeydown($event)',
   },
   template: `
     <article class="note-card" [style.background-color]="colorVar()">
@@ -275,6 +279,38 @@ export class NoteCardComponent implements OnDestroy {
 
   protected readonly labelNames = computed(() => this.labels.names(this.note().labels));
 
+  /**
+   * `role="button"` flattens the heading, preview and label list into
+   * presentational content, so this has to restate everything the card shows.
+   * The visual layout is untouched — the card was already one tap target.
+   */
+  protected readonly ariaLabel = computed(() => {
+    const note = this.note();
+    const parts = [this.headline() || this.i18n.t('card.emptyNote')];
+    if (note.pinned) {
+      parts.push(this.i18n.t('a11y.notePinned'));
+    }
+    const names = this.labelNames();
+    if (names.length) {
+      parts.push(this.i18n.t('a11y.noteLabelList', { names: names.join(', ') }));
+    }
+    const images = referencedImageIds(note).length;
+    if (images) {
+      parts.push(this.i18n.t('a11y.noteImageCount', { count: images }));
+    }
+    return parts.join('. ');
+  });
+
+  /** The same fallback order the card renders: title, then first row or line. */
+  private readonly headline = computed(() => {
+    const note = this.note();
+    if (note.title.trim()) {
+      return note.title;
+    }
+    const item = (note.checklist ?? []).find((entry) => entry.text.trim() !== '');
+    return item ? item.text : (this.previewSource().trim().split('\n')[0] ?? '');
+  });
+
   ngOnDestroy(): void {
     this.tracker.cancel();
   }
@@ -303,6 +339,21 @@ export class NoteCardComponent implements OnDestroy {
       return;
     }
     this.open.emit();
+  }
+
+  /**
+   * The long press has no keyboard or AT equivalent, so without this the actions
+   * sheet is unreachable without a pointer. Both of the menu keys are mapped:
+   * TalkBack and a physical keyboard do not agree on which one they send.
+   */
+  protected onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.open.emit();
+    } else if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+      event.preventDefault();
+      this.longPress.emit();
+    }
   }
 
   private suppressClick = false;
