@@ -22,6 +22,11 @@ export const routes: Routes = [
     path: 'labels',
     loadComponent: () => import('./features/labels/labels.page').then((m) => m.LabelsPage),
   },
+  // As with a notebook: the same list, a different view.
+  {
+    path: 'labels/:labelId',
+    loadComponent: () => import('./features/notes/notes.page').then((m) => m.NotesPage),
+  },
   {
     path: 'archive',
     loadComponent: () => import('./features/archive/archive.page').then((m) => m.ArchivePage),

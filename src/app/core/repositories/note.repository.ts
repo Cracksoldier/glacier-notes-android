@@ -3,7 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import type { DatabaseAdapter } from '../database/database-adapter';
 import { newId, nowIso } from '../models/entity-id';
 import type { Note } from '../models/note';
-import { type NoteView, type NoteWindow, queryNoteById, queryNotes } from './note-queries';
+import {
+  type NoteView,
+  type NoteWindow,
+  queryNoteById,
+  queryNotes,
+  trashedNoteIds,
+} from './note-queries';
 import {
   applyNotePatch,
   insertNote,
@@ -11,6 +17,7 @@ import {
   type NoteCreateInput,
   type NoteUpdatePatch,
   purgeNote,
+  purgeNotes,
   requireNoteExists,
   requireNotebookExists,
   restoreNote,
@@ -125,6 +132,27 @@ export class NoteRepository {
   /** Returns the image ids the note referenced; deleting the files is M10's. */
   purge(id: string): Promise<string[]> {
     return this.context.write('notes.purge', (adapter) => purgeNote(adapter, id));
+  }
+
+  emptyTrash(): Promise<string[]> {
+    return this.context.write('notes.emptyTrash', async (adapter) =>
+      purgeNotes(adapter, await trashedNoteIds(adapter)),
+    );
+  }
+
+  /**
+   * The desktop's startup purge (`main.ts:266`), including its `days <= 0`
+   * escape hatch — which short-circuits before opening a transaction, so
+   * disabling it costs nothing at boot.
+   */
+  purgeExpired(days: number): Promise<string[]> {
+    if (days <= 0) {
+      return Promise.resolve([]);
+    }
+    const cutoff = new Date(Date.now() - days * 86_400_000).toISOString();
+    return this.context.write('notes.purgeExpired', async (adapter) =>
+      purgeNotes(adapter, await trashedNoteIds(adapter, cutoff)),
+    );
   }
 }
 

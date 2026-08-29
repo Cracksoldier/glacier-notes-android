@@ -154,3 +154,26 @@ ion-fab[vertical="bottom"] {
     border-top: 1px solid var(--color-border);
   }
 }
+
+// The note colour picker's swatches. Ionic renders overlays outside any
+// component's style scope, so these cannot live in `note-prompts.ts`'s owner.
+.note-color-alert {
+  .note-color-alert__option .alert-radio-label::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    vertical-align: -2px;
+    background-color: var(--swatch);
+  }
+
+  // Quoted: Sass reads bare `red`, `teal`, … as colour values, not strings.
+  @each $name in ("red", "orange", "yellow", "green", "teal", "blue", "purple", "pink") {
+    .note-color-alert__option--#{$name} {
+      --swatch: var(--note-#{$name});
+    }
+  }
+}

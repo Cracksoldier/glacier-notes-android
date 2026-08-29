@@ -13,6 +13,11 @@ function segmentLabels(host: HTMLElement, index: number): (string | undefined)[]
   return [...segment.querySelectorAll('ion-label')].map((el) => el.textContent?.trim());
 }
 
+function selectOptions(host: HTMLElement, index: number): (string | undefined)[] {
+  const select = host.querySelectorAll('ion-select')[index];
+  return [...select.querySelectorAll('ion-select-option')].map((el) => el.textContent?.trim());
+}
+
 describe('SettingsPage', () => {
   let fixture: ComponentFixture<SettingsPage>;
   let repositories: TestRepositories;
@@ -54,11 +59,8 @@ describe('SettingsPage', () => {
 
   it('lists the notebooks a new note could default into', () => {
     const host: HTMLElement = fixture.nativeElement;
-    const options = [...host.querySelectorAll('ion-select-option')].map((el) =>
-      el.textContent?.trim(),
-    );
 
-    expect(options).toEqual(['Notes']);
+    expect(selectOptions(host, 0)).toEqual(['Notes']);
     expect(host.querySelector<HTMLElement & { value: string }>('ion-select')?.value).toBe(
       repositories.defaultNotebookId,
     );
@@ -75,6 +77,28 @@ describe('SettingsPage', () => {
 
     expect(await repositories.notebooks.getDefaultId()).toBe(work.id);
     expect(TestBed.inject(SettingsStore).snapshot()).not.toHaveProperty('defaultNotebookId');
+  });
+
+  it('offers the desktop default plus an off switch for the trash purge window', () => {
+    const host: HTMLElement = fixture.nativeElement;
+
+    expect(selectOptions(host, 1)).toEqual([
+      'Never',
+      '7 days',
+      '14 days',
+      '30 days',
+      '60 days',
+      '90 days',
+    ]);
+    expect(TestBed.inject(SettingsStore).trashAutoPurgeDays()).toBe(30);
+  });
+
+  it('writes a chosen purge window to settings', () => {
+    fixture.componentInstance.onTrashAutoPurgeChange(
+      new CustomEvent('ionChange', { detail: { value: 0 } }),
+    );
+
+    expect(TestBed.inject(SettingsStore).trashAutoPurgeDays()).toBe(0);
   });
 
   it('states that settings never leave the device', () => {

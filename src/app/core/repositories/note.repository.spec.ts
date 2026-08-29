@@ -5,6 +5,7 @@ import { EntityNotFoundError } from './repository-errors';
 import { createTestRepositories, type TestRepositories } from './testing';
 
 const START = Date.UTC(2026, 0, 1);
+const DAY_MS = 86_400_000;
 
 function item(text: string, sortOrder: number): ChecklistItem {
   return { id: crypto.randomUUID(), text, checked: false, sortOrder };
@@ -170,5 +171,60 @@ describe('NoteRepository', () => {
 
     expect((await repos.notes.purge(note.id)).sort()).toEqual([declared, embedded].sort());
     expect(await repos.notes.find(note.id)).toBeUndefined();
+  });
+
+  // The cutoff comparison is `deleted_at < cutoff`, so a note trashed exactly
+  // `days` ago has not yet outlived the window.
+  it('purges a trashed note once it is past the window, not at it', async () => {
+    const note = await create();
+    await repos.notes.trash(note.id);
+
+    vi.setSystemTime(START + 30 * DAY_MS);
+    expect(await repos.notes.purgeExpired(30)).toEqual([]);
+    expect(await repos.notes.find(note.id)).toBeDefined();
+
+    vi.setSystemTime(START + 30 * DAY_MS + 1);
+    await repos.notes.purgeExpired(30);
+    expect(await repos.notes.find(note.id)).toBeUndefined();
+  });
+
+  it('never purges a note that is merely old, only one that is trashed', async () => {
+    const note = await create();
+
+    vi.setSystemTime(START + 900 * DAY_MS);
+    await repos.notes.purgeExpired(30);
+
+    expect(await repos.notes.find(note.id)).toBeDefined();
+  });
+
+  it('purges nothing at all when the window is disabled', async () => {
+    const note = await create();
+    await repos.notes.trash(note.id);
+
+    vi.setSystemTime(START + 900 * DAY_MS);
+
+    expect(await repos.notes.purgeExpired(0)).toEqual([]);
+    expect(await repos.notes.purgeExpired(-1)).toEqual([]);
+    expect(await repos.notes.find(note.id)).toBeDefined();
+  });
+
+  it('empties the trash in one pass, reporting every freed image and sparing the rest', async () => {
+    const trashedImage = crypto.randomUUID();
+    const keptImage = crypto.randomUUID();
+    await repos.images.insert({ id: trashedImage, mimeType: 'image/png' });
+    await repos.images.insert({ id: keptImage, mimeType: 'image/png' });
+
+    const doomed = await create();
+    await repos.notes.update(doomed.id, { imageIds: [trashedImage] });
+    await repos.notes.trash(doomed.id);
+    const embedded = crypto.randomUUID();
+    const alsoDoomed = await create({ content: `![](glacier-img://${embedded})` });
+    await repos.notes.trash(alsoDoomed.id);
+    const survivor = await create();
+    await repos.notes.update(survivor.id, { imageIds: [keptImage] });
+
+    expect((await repos.notes.emptyTrash()).sort()).toEqual([trashedImage, embedded].sort());
+    expect(await repos.notes.list({ kind: 'trashed' })).toEqual([]);
+    expect(await repos.notes.find(survivor.id)).toBeDefined();
   });
 });

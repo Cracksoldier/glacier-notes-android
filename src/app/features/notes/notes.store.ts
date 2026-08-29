@@ -1,9 +1,11 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
+import { ImageGcService } from '../../core/images/image-gc.service';
 import type { Note } from '../../core/models/note';
 import type { NoteView } from '../../core/repositories/note-queries';
 import { NotebookRepository } from '../../core/repositories/notebook.repository';
 import { NoteRepository, type NoteUpdatePatch } from '../../core/repositories/note.repository';
+import type { NoteColor } from './note-colors';
 
 export type NotesStatus = 'loading' | 'ready' | 'error';
 
@@ -22,11 +24,13 @@ export type NotesStatus = 'loading' | 'ready' | 'error';
 export class NotesStore {
   private readonly notesRepository = inject(NoteRepository);
   private readonly notebooks = inject(NotebookRepository);
+  private readonly imageGc = inject(ImageGcService);
 
   private readonly all = signal<readonly Note[]>([]);
   private readonly state = signal<NotesStatus>('loading');
   private readonly failedSave = signal(false);
   private readonly currentView = signal<NoteView>({ kind: 'active' });
+  private loaded = false;
 
   readonly notes = this.all.asReadonly();
   readonly status = this.state.asReadonly();
@@ -36,8 +40,24 @@ export class NotesStore {
   readonly pinned = computed(() => this.all().filter((note) => note.pinned));
   readonly unpinned = computed(() => this.all().filter((note) => !note.pinned));
 
-  /** Switches which notes the list holds. The editor keeps writing through it either way. */
+  /**
+   * Switches which notes the list holds. The editor keeps writing through it
+   * either way.
+   *
+   * Re-selecting the view already held is a no-op, not a refresh. Ionic caches
+   * pages, so each list page re-asserts its view on `ionViewWillEnter` — without
+   * the guard, re-entering a page would reload it, which is precisely the
+   * reload-on-re-enter that `docs/markdown-and-editor.md` rules out. Everything
+   * that could change membership already writes through this store.
+   *
+   * The `loaded` flag is what keeps that guard from swallowing the very first
+   * load: `/notes` asks for the active view the store already starts on, and
+   * without the flag the app opens on a permanently empty list.
+   */
   setView(view: NoteView): Promise<void> {
+    if (this.loaded && sameView(view, this.currentView())) {
+      return Promise.resolve();
+    }
     this.currentView.set(view);
     return this.load();
   }
@@ -47,6 +67,7 @@ export class NotesStore {
     try {
       this.all.set(await this.notesRepository.list(this.currentView()));
       this.state.set('ready');
+      this.loaded = true;
     } catch {
       this.all.set([]);
       this.state.set('error');
@@ -90,8 +111,56 @@ export class NotesStore {
   }
 
   async discard(id: string): Promise<void> {
-    await this.notesRepository.purge(id);
+    await this.imageGc.collect(await this.notesRepository.purge(id));
     this.all.set(this.all().filter((note) => note.id !== id));
+  }
+
+  /**
+   * Pin and colour are the only two M08 actions that go through `replace`: they
+   * change no `WHERE` clause in `note-queries.ts`, so the note stays in whatever
+   * view it was in. Everything below them can change view membership and so
+   * reloads instead — see the comment on `replace`.
+   *
+   * Safe against the trash's `deleted_at DESC` ordering only because
+   * `noteActionChoices` offers neither action there, so `sortActiveNotes` can
+   * never re-sort a trashed list by the wrong key.
+   */
+  async setPinned(id: string, pinned: boolean): Promise<void> {
+    this.replace(await this.notesRepository.setPinned(id, pinned));
+  }
+
+  async setColor(id: string, color: NoteColor | undefined): Promise<void> {
+    this.replace(await this.notesRepository.update(id, { color }));
+  }
+
+  async setLabels(id: string, labelIds: readonly string[]): Promise<void> {
+    await this.notesRepository.setLabels(id, labelIds);
+    await this.load();
+  }
+
+  async setArchived(id: string, archived: boolean): Promise<void> {
+    await this.notesRepository.setArchived(id, archived);
+    await this.load();
+  }
+
+  async trash(id: string): Promise<void> {
+    await this.notesRepository.trash(id);
+    await this.load();
+  }
+
+  async restore(id: string): Promise<void> {
+    await this.notesRepository.restore(id);
+    await this.load();
+  }
+
+  async deleteForever(id: string): Promise<void> {
+    await this.imageGc.collect(await this.notesRepository.purge(id));
+    await this.load();
+  }
+
+  async emptyTrash(): Promise<void> {
+    await this.imageGc.collect(await this.notesRepository.emptyTrash());
+    await this.load();
   }
 
   clearSaveError(): void {
@@ -107,8 +176,8 @@ export class NotesStore {
    * encoding of the `WHERE` clauses in `note-queries.ts`, next to the one
    * `compareActiveNotes` already keeps of their `ORDER BY` — and
    * `docs/repositories.md` names that duplication as the layer's standing
-   * hazard. Archiving and trashing arrive at M08 and belong in a reload, not
-   * here.
+   * hazard. Archiving, trashing and labelling therefore reload instead of
+   * passing through here.
    */
   private replace(saved: Note): void {
     const view = this.currentView();
@@ -144,4 +213,17 @@ export function compareActiveNotes(a: Note, b: Note): number {
 
 function sortActiveNotes(notes: readonly Note[]): readonly Note[] {
   return [...notes].sort(compareActiveNotes);
+}
+
+function sameView(a: NoteView, b: NoteView): boolean {
+  if (a.kind !== b.kind) {
+    return false;
+  }
+  if (a.kind === 'notebook' && b.kind === 'notebook') {
+    return a.notebookId === b.notebookId;
+  }
+  if (a.kind === 'label' && b.kind === 'label') {
+    return a.labelId === b.labelId;
+  }
+  return true;
 }

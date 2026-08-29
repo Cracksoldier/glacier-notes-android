@@ -6,6 +6,8 @@ import { MemoryPreferencesAdapter } from '../../core/preferences/memory-preferen
 import { PREFERENCES_ADAPTER } from '../../core/preferences/preferences-adapter';
 import type { Note } from '../../core/models/note';
 import { createTestRepositories, type TestRepositories } from '../../core/repositories/testing';
+import { LabelPrompts } from '../labels/label-prompts';
+import { LabelsStore } from '../labels/labels.store';
 import { NotebookPrompts } from '../notebooks/notebook-prompts';
 import { NotebooksStore } from '../notebooks/notebooks.store';
 import { NoteEditorPage } from './note-editor.page';
@@ -38,12 +40,15 @@ describe('NoteEditorPage', () => {
   let repositories: TestRepositories;
   let store: NotesStore;
   let notebooks: NotebooksStore;
+  let labels: LabelsStore;
   /** An Ionic action sheet cannot be presented under jsdom; only its answer matters here. */
   let chosenNotebookId: string | undefined;
+  let chosenLabelIds: readonly string[] | undefined;
 
   beforeEach(async () => {
     capacitorApp.listeners.length = 0;
     chosenNotebookId = undefined;
+    chosenLabelIds = undefined;
 
     TestBed.configureTestingModule({
       providers: [
@@ -53,13 +58,16 @@ describe('NoteEditorPage', () => {
           provide: NotebookPrompts,
           useValue: { pickNotebook: () => Promise.resolve(chosenNotebookId) },
         },
+        { provide: LabelPrompts, useValue: { pickLabels: () => Promise.resolve(chosenLabelIds) } },
       ],
     });
     repositories = await createTestRepositories();
     store = TestBed.inject(NotesStore);
     notebooks = TestBed.inject(NotebooksStore);
+    labels = TestBed.inject(LabelsStore);
     await store.load();
     await notebooks.load();
+    await labels.load();
   });
 
   afterEach(async () => {
@@ -306,6 +314,67 @@ describe('NoteEditorPage', () => {
       await settle();
 
       expect(move).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('the labels chip', () => {
+    it('invites the user to assign a label, then names the ones assigned', async () => {
+      const work = await labels.create('Work');
+      const note = await store.createTextNote();
+      const fixture = await open(note);
+      const chip = fixture.nativeElement.querySelector('.editor__labels') as HTMLButtonElement;
+
+      expect(chip.textContent).toContain('Labels');
+
+      chosenLabelIds = [work.id];
+      chip.click();
+      await settle();
+      fixture.detectChanges();
+
+      expect(chip.textContent).toContain('Work');
+      expect((await repositories.notes.get(note.id)).labels).toEqual([work.id]);
+    });
+
+    // The same `updatedAt` hazard as the notebook chip: `setLabels` bumps the
+    // timestamp, so a debounced body still in the textarea has to land first.
+    it('flushes a pending edit before writing the labels', async () => {
+      const work = await labels.create('Work');
+      const note = await store.createTextNote();
+      const fixture = await open(note);
+
+      const writes: string[] = [];
+      const update = repositories.notes.update.bind(repositories.notes);
+      const setLabels = repositories.notes.setLabels.bind(repositories.notes);
+      vi.spyOn(repositories.notes, 'update').mockImplementation((id, patch) => {
+        writes.push('update');
+        return update(id, patch);
+      });
+      vi.spyOn(repositories.notes, 'setLabels').mockImplementation((id, labelIds) => {
+        writes.push('setLabels');
+        return setLabels(id, labelIds);
+      });
+
+      type(fixture, '.editor__content', 'typed then labelled');
+      chosenLabelIds = [work.id];
+      (fixture.nativeElement.querySelector('.editor__labels') as HTMLButtonElement).click();
+      await settle();
+
+      // `setLabels` is itself an `update`, so only the leading pair is asserted.
+      expect(writes.slice(0, 2)).toEqual(['update', 'setLabels']);
+      const stored = await repositories.notes.get(note.id);
+      expect(stored.content).toBe('typed then labelled');
+      expect(stored.labels).toEqual([work.id]);
+    });
+
+    it('leaves the labels alone when the alert is dismissed', async () => {
+      const note = await store.createTextNote();
+      const fixture = await open(note);
+      const setLabels = vi.spyOn(repositories.notes, 'setLabels');
+
+      (fixture.nativeElement.querySelector('.editor__labels') as HTMLButtonElement).click();
+      await settle();
+
+      expect(setLabels).not.toHaveBeenCalled();
     });
   });
 

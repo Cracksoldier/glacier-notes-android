@@ -122,6 +122,32 @@ import { NotebooksStore } from '../notebooks/notebooks.store';
       </ion-list>
 
       <ion-list [inset]="true">
+        <ion-list-header>{{ i18n.t('settings.trash') }}</ion-list-header>
+        <ion-item lines="none">
+          <ion-select
+            [value]="settings.trashAutoPurgeDays()"
+            (ionChange)="onTrashAutoPurgeChange($event)"
+            [label]="i18n.t('settings.trashAutoPurge')"
+            labelPlacement="stacked"
+            [attr.aria-label]="i18n.t('a11y.trashAutoPurge')"
+            [interfaceOptions]="{ header: i18n.t('settings.trashAutoPurge') }"
+          >
+            <ion-select-option [value]="0">
+              {{ i18n.t('settings.trashAutoPurgeNever') }}
+            </ion-select-option>
+            @for (days of autoPurgeChoices; track days) {
+              <ion-select-option [value]="days">
+                {{ i18n.t('settings.trashAutoPurgeDays', { count: days }) }}
+              </ion-select-option>
+            }
+          </ion-select>
+        </ion-item>
+        <ion-item lines="none">
+          <ion-note class="settings__sample">{{ i18n.t('settings.trashAutoPurgeHint') }}</ion-note>
+        </ion-item>
+      </ion-list>
+
+      <ion-list [inset]="true">
         <ion-item lines="none">
           <ion-note>{{ i18n.t('settings.localOnly') }}</ion-note>
         </ion-item>
@@ -143,6 +169,9 @@ export class SettingsPage {
   /** Shows what the language choice does to dates before any note exists. */
   readonly sampleDate = new Date().toISOString();
 
+  /** 30 is the desktop's default (`docs/desktop-audit.md` §6); 0 is offered separately as "Never". */
+  readonly autoPurgeChoices = [7, 14, 30, 60, 90];
+
   onThemeChange(event: Event): void {
     const { value } = (event as CustomEvent<{ value: string }>).detail;
     this.theme.setMode(value as ThemeMode);
@@ -151,6 +180,11 @@ export class SettingsPage {
   onLanguageChange(event: Event): void {
     const { value } = (event as CustomEvent<{ value: string }>).detail;
     this.settings.setLanguage(value as LanguageCode);
+  }
+
+  onTrashAutoPurgeChange(event: Event): void {
+    const { value } = (event as CustomEvent<{ value: number }>).detail;
+    this.settings.setTrashAutoPurgeDays(value);
   }
 
   /**

@@ -205,6 +205,114 @@ describe('NotesStore', () => {
     });
   });
 
+  // The replace-vs-reload split of `docs/labels-and-organization.md`: an action
+  // that cannot change view membership patches the list in place, and every
+  // action that can re-runs the query rather than re-deciding the `WHERE` in
+  // TypeScript.
+  describe('organizing', () => {
+    it('re-sorts a pinned note without re-reading the list', async () => {
+      const sticky = await store.createTextNote();
+      await store.createTextNote();
+      const list = vi.spyOn(repositories.notes, 'list');
+
+      await store.setPinned(sticky.id, true);
+
+      expect(store.notes()[0]?.id).toBe(sticky.id);
+      expect(store.pinned().map((note) => note.id)).toEqual([sticky.id]);
+      expect(list).not.toHaveBeenCalled();
+    });
+
+    it('colours a note in place, and clears the colour again', async () => {
+      const note = await store.createTextNote();
+      const list = vi.spyOn(repositories.notes, 'list');
+
+      await store.setColor(note.id, 'teal');
+      expect(store.notes()[0]?.color).toBe('teal');
+
+      await store.setColor(note.id, undefined);
+      expect('color' in (store.notes()[0] ?? {})).toBe(false);
+      expect(list).not.toHaveBeenCalled();
+    });
+
+    it('drops an archived note from the active view and finds it in the archive', async () => {
+      const note = await store.createTextNote();
+
+      await store.setArchived(note.id, true);
+      expect(store.notes()).toEqual([]);
+
+      await store.setView({ kind: 'archived' });
+      expect(store.notes().map((entry) => entry.id)).toEqual([note.id]);
+
+      await store.setArchived(note.id, false);
+      expect(store.notes()).toEqual([]);
+    });
+
+    it('moves a note to the trash and back', async () => {
+      const note = await store.createTextNote();
+
+      await store.trash(note.id);
+      expect(store.notes()).toEqual([]);
+
+      await store.setView({ kind: 'trashed' });
+      expect(store.notes().map((entry) => entry.id)).toEqual([note.id]);
+
+      await store.restore(note.id);
+      expect(store.notes()).toEqual([]);
+      expect((await repositories.notes.get(note.id)).deletedAt).toBeUndefined();
+    });
+
+    it('drops a note from a label view once the label is taken off it', async () => {
+      const label = await repositories.labels.create('Work');
+      const note = await store.createTextNote();
+      await store.setLabels(note.id, [label.id]);
+
+      await store.setView({ kind: 'label', labelId: label.id });
+      expect(store.notes().map((entry) => entry.id)).toEqual([note.id]);
+
+      await store.setLabels(note.id, []);
+      expect(store.notes()).toEqual([]);
+    });
+
+    it('deletes one note forever and empties the whole trash', async () => {
+      const single = await store.createTextNote();
+      const rest = await store.createTextNote();
+      await store.trash(single.id);
+      await store.trash(rest.id);
+      await store.setView({ kind: 'trashed' });
+
+      await store.deleteForever(single.id);
+      expect(store.notes().map((entry) => entry.id)).toEqual([rest.id]);
+
+      await store.emptyTrash();
+      expect(store.notes()).toEqual([]);
+      expect(await repositories.notes.find(rest.id)).toBeUndefined();
+    });
+
+    // Ionic caches pages, so every list page re-asserts its view on entry.
+    it('ignores a repeat of the view it already holds', async () => {
+      await store.setView({ kind: 'archived' });
+      const list = vi.spyOn(repositories.notes, 'list');
+
+      await store.setView({ kind: 'archived' });
+
+      expect(list).not.toHaveBeenCalled();
+    });
+
+    // `/notes` asks for the active view the store already starts on, so a guard
+    // that only compared views would leave the app opening on a blank list.
+    it('still performs the very first load of the view it starts on', async () => {
+      await repositories.notes.create({
+        notebookId: repositories.defaultNotebookId,
+        type: 'text',
+      });
+
+      await store.setView({ kind: 'active' });
+
+      expect(store.status()).toBe('ready');
+      expect(store.notes()).toHaveLength(1);
+    });
+  });
+
   describe('compareActiveNotes', () => {
     it('agrees with the repository ordering', async () => {
       vi.useFakeTimers();

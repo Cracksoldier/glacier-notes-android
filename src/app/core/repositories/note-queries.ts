@@ -102,6 +102,29 @@ export async function noteIdsInNotebook(
   return rows.map((row) => row.id);
 }
 
+/**
+ * Trashed note ids, optionally only those trashed before a cutoff.
+ *
+ * The desktop compares `deletedAt` against a single cutoff rather than counting
+ * days per note (`note-repo.ts` `purgeExpired`), so the boundary moves for every
+ * note at once instead of stranding individual ones.
+ */
+export async function trashedNoteIds(
+  adapter: DatabaseAdapter,
+  cutoffIso?: string,
+): Promise<string[]> {
+  const rows =
+    cutoffIso === undefined
+      ? await adapter.query<{ id: string }>(
+          'SELECT id FROM notes WHERE deleted_at IS NOT NULL ORDER BY id',
+        )
+      : await adapter.query<{ id: string }>(
+          'SELECT id FROM notes WHERE deleted_at IS NOT NULL AND deleted_at < ? ORDER BY id',
+          [cutoffIso],
+        );
+  return rows.map((row) => row.id);
+}
+
 function viewPage(view: NoteView, window: NoteWindow): Page {
   const limits: readonly SqlValue[] = [window.limit ?? -1, window.offset ?? 0];
   const tail = (order: string) => `ORDER BY ${order} LIMIT ? OFFSET ?`;

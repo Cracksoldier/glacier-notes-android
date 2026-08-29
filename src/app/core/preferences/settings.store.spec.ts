@@ -110,6 +110,34 @@ describe('SettingsStore', () => {
       'noteLayout',
       'sortOrder',
       'themeMode',
+      'trashAutoPurgeDays',
     ]);
+  });
+
+  /**
+   * `snapshot()` enumerates fields by name, so a new setting that is not listed
+   * there reads back fine in the session that set it and silently reverts on the
+   * next launch. This is the only check that would catch that.
+   */
+  it('round-trips the trash auto-purge window', async () => {
+    const adapter = configure();
+    const store = TestBed.inject(SettingsStore);
+    await store.init();
+
+    store.setTrashAutoPurgeDays(7);
+    TestBed.tick();
+
+    expect((await persisted(adapter))['trashAutoPurgeDays']).toBe(7);
+  });
+
+  it('falls back to the default for a window that is not a whole number of days', async () => {
+    for (const value of [-1, 1.5, 4000, 'soon', null]) {
+      configure(JSON.stringify({ trashAutoPurgeDays: value }));
+      const store = TestBed.inject(SettingsStore);
+      await store.init();
+
+      expect(store.trashAutoPurgeDays()).toBe(30);
+      TestBed.resetTestingModule();
+    }
   });
 });

@@ -16,17 +16,17 @@ Two documents in the repo root govern all work here and take precedence over ass
 
 ## Current repository state
 
-M00 through M07 are complete. The design system, app shell, branding, English/German localization, persisted settings, the domain models, the SQLite layer (schema, migrations, transactions), the repositories on top of it, the note list and Markdown editor, and notebook management are in place. Notes can be created, edited, rendered, filtered by notebook and moved between notebooks end to end; labels, archive, trash and import/export still route to placeholder pages. Work continues at M08, which adds labels, note colors, pinning, archive and trash.
+M00 through M08 are complete. The design system, app shell, branding, English/German localization, persisted settings, the domain models, the SQLite layer (schema, migrations, transactions), the repositories on top of it, the note list and Markdown editor, notebook management, and labels/colors/pinning/archive/trash are in place. Notes can be created, edited, rendered, filtered by notebook and label, coloured, pinned, labelled, archived, trashed, restored and purged end to end; only import/export still routes to a placeholder page. Work continues at M09.
 
 Starter defaults still awaiting a later milestone:
 
 | Item | Current | Required by |
 | --- | --- | --- |
 | `android/app/src/main/AndroidManifest.xml` | has `INTERNET`, `allowBackup="true"` | M15 removes/disables both |
-| `src/app/features/*` | notes and notebooks are built; labels, archive, trash and import/export are still `app-empty-state` | M08 onwards, one per feature |
+| `src/app/features/*` | every feature is built except import/export, which is still `app-empty-state` | M12 |
 | `sortOrder` setting | persisted model, no UI and no reader | M11 |
 | `lastSelectedNotebookId` setting | written by the notes page, no reader — the app always opens on `/notes` | undecided |
-| Note cards | title and preview only — no colours, labels, pin badge or actions | M08 |
+| `ImageGcService.collect` | takes the purged image ids and does nothing; there are no image files yet | M10 |
 
 Resolved by M01: app ID is `com.glacier.notes` in `capacitor.config.ts`, `android/app/build.gradle` and `strings.xml`; Biome formats (linter off) alongside angular-eslint; `format`, `format:check` and `typecheck` scripts exist; `.gitignore` covers keystores and Android build output.
 
@@ -41,6 +41,8 @@ Resolved by M05: `docs/repositories.md` records the repository/primitive split a
 Resolved by M06: `docs/markdown-and-editor.md` records what was ported verbatim from the desktop Markdown pipeline versus the three deliberate divergences, why `NotesStore` exists at all, the four independent layers that keep a note from reaching the network, and two testing gotchas that will otherwise be rediscovered the hard way. **Read it before touching `src/app/core/markdown/` or `src/app/features/notes/`.** Three rules that will otherwise be broken silently: the editor must write *through* `NotesStore` rather than the list reloading on re-enter (Ionic does not await `ionViewWillLeave`, so reload-on-re-enter races the editor's own flush); `compareActiveNotes` and the SQL ordering in `note-queries.ts` must move together, and `notes.store.spec.ts` cross-checks them; and `angular.json` must keep `"inlineCritical": false`, because the critical-CSS inliner emits an inline `onload` handler that the CSP blocks, silently leaving the app unstyled.
 
 Resolved by M07: `docs/notebooks.md` records why `NotebooksStore` is loaded once for the whole session, why the default notebook id lives in `app_state` rather than `SettingsStore`, why the delete dialog's decisions sit in pure functions outside the overlay that shows them, and the one SQL predicate deliberately mirrored in TypeScript. **Read it before touching `src/app/features/notebooks/` or adding a note view.** Three rules that will otherwise be broken silently: `NotesStore.replace()` must not grow into a general `matchesView()` (M08's archive and trash transitions belong in a reload); the editor must flush its pending autosave *before* moving a note, since both writes bump `updatedAt`; and logic placed inside an Ionic overlay callback is untestable under jsdom, so overlays collect values and decide nothing.
+
+Resolved by M08: `docs/labels-and-organization.md` records which note actions replace a row in `NotesStore` versus which reload the list, why the long press is hand-rolled rather than Ionic's `createGesture` or a `contextmenu` handler, why the startup trash purge is an app initializer, and the `ImageGcService` seam M10 fills in. **Read it before touching `src/app/features/notes/`, `src/app/features/labels/` or `src/app/core/startup.ts`.** Three rules that will otherwise be broken silently: Angular invokes every app initializer *before awaiting any of them*, so startup ordering must go inside `provideStartup()` rather than into a fourth `provideAppInitializer` beside it; an action offered in the trash view must reload rather than replace, because `sortActiveNotes` encodes the active ordering and the trash is ordered by `deleted_at DESC`; and `NotesStore.replace()` still must not grow into a general `matchesView()`.
 
 `capacitor.config.ts` sets `loggingBehavior: 'none'`. Without it Capacitor's bridge logger writes every SQLite bind value and result row to logcat on debug builds, which means note titles and bodies.
 

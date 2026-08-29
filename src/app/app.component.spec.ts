@@ -8,6 +8,7 @@ import { MemoryPreferencesAdapter } from './core/preferences/memory-preferences.
 import { PREFERENCES_ADAPTER } from './core/preferences/preferences-adapter';
 import { SettingsStore } from './core/preferences/settings.store';
 import { createTestRepositories, type TestRepositories } from './core/repositories/testing';
+import { LabelsStore } from './features/labels/labels.store';
 import { NotebooksStore } from './features/notebooks/notebooks.store';
 
 describe('AppComponent', () => {
@@ -28,6 +29,7 @@ describe('AppComponent', () => {
     fixture = TestBed.createComponent(AppComponent);
     // The component starts the load in its constructor but cannot await it.
     await TestBed.inject(NotebooksStore).load();
+    await TestBed.inject(LabelsStore).load();
     fixture.detectChanges();
   });
 
@@ -79,7 +81,7 @@ describe('AppComponent', () => {
     expect(host.querySelector('.drawer__nav')?.textContent).toContain('Work');
   });
 
-  it('renders the section headings, with only the label create row still disabled', () => {
+  it('renders the section headings and both create rows, now that neither is a stub', () => {
     const host: HTMLElement = fixture.nativeElement;
     const headings = [...host.querySelectorAll('.drawer__section-title')].map((el) =>
       el.textContent?.trim(),
@@ -88,8 +90,18 @@ describe('AppComponent', () => {
 
     expect(headings).toEqual(['Notes', 'Notebooks', 'Labels']);
     expect(createRows.map((el) => el.textContent?.trim())).toEqual(['New notebook', 'New label']);
-    // Labels have no create flow until M08.
-    expect(createRows.map((el) => el.disabled)).toEqual([false, true]);
+    expect(createRows.map((el) => el.disabled)).toEqual([false, false]);
+  });
+
+  it('renders one drawer entry per label', async () => {
+    await TestBed.inject(LabelsStore).create('Work');
+    fixture.detectChanges();
+
+    const host: HTMLElement = fixture.nativeElement;
+    const hrefs = [...host.querySelectorAll('a.drawer__item')].map((a) => a.getAttribute('href'));
+
+    expect(hrefs.filter((href) => href?.startsWith('/labels/'))).toHaveLength(1);
+    expect(host.querySelector('.drawer__nav')?.textContent).toContain('Work');
   });
 
   it('applies the default theme on startup', () => {

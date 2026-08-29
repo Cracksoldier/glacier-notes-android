@@ -12,7 +12,12 @@ export interface Settings {
   noteLayout: NoteLayout;
   sortOrder: NoteSortOrder;
   lastSelectedNotebookId: string | null;
+  /** Days a note may sit in the trash before startup purges it; 0 disables. */
+  trashAutoPurgeDays: number;
 }
+
+/** Ten years. Anything larger is indistinguishable from "never" but harder to reason about. */
+const MAX_TRASH_AUTO_PURGE_DAYS = 3650;
 
 const THEME_MODES: readonly ThemeMode[] = ['dark', 'light', 'system'];
 const LANGUAGES: readonly LanguageCode[] = ['en', 'de'];
@@ -27,6 +32,7 @@ export function defaultSettings(deviceLocale: string): Settings {
     noteLayout: 'list',
     sortOrder: 'updatedDesc',
     lastSelectedNotebookId: null,
+    trashAutoPurgeDays: 30,
   };
 }
 
@@ -49,7 +55,22 @@ export function sanitizeSettings(raw: unknown, deviceLocale: string): Settings {
     noteLayout: pick(record['noteLayout'], NOTE_LAYOUTS, defaults.noteLayout),
     sortOrder: pick(record['sortOrder'], NOTE_SORT_ORDERS, defaults.sortOrder),
     lastSelectedNotebookId: typeof notebookId === 'string' ? notebookId : null,
+    trashAutoPurgeDays: pickDays(record['trashAutoPurgeDays'], defaults.trashAutoPurgeDays),
   };
+}
+
+/**
+ * A bad value here would delete notes, so it is rejected rather than coerced:
+ * `Number('7 ')` is 7, but a string in this field means the record was not
+ * written by this app.
+ */
+function pickDays(value: unknown, fallback: number): number {
+  return typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= MAX_TRASH_AUTO_PURGE_DAYS
+    ? value
+    : fallback;
 }
 
 function pick<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {

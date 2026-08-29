@@ -28,7 +28,10 @@ import {
   faCircleQuestion,
   faEye,
   faPen,
+  faTag,
 } from '../../shared/utilities/glacier-icons';
+import { LabelPrompts } from '../labels/label-prompts';
+import { LabelsStore } from '../labels/labels.store';
 import { NotebookPrompts } from '../notebooks/notebook-prompts';
 import { NotebooksStore } from '../notebooks/notebooks.store';
 import { MarkdownToolbarComponent } from './markdown-toolbar.component';
@@ -92,15 +95,27 @@ type EditorStatus = 'loading' | 'ready' | 'missing';
             (input)="onTitleInput($any($event.target).value)"
           />
 
-          <button
-            type="button"
-            class="editor__notebook"
-            (click)="chooseNotebook()"
-            [attr.aria-label]="i18n.t('a11y.noteNotebook')"
-          >
-            <fa-icon [icon]="notebookIcon" />
-            <span>{{ notebookName() }}</span>
-          </button>
+          <div class="editor__chips">
+            <button
+              type="button"
+              class="editor__chip editor__notebook"
+              (click)="chooseNotebook()"
+              [attr.aria-label]="i18n.t('a11y.noteNotebook')"
+            >
+              <fa-icon [icon]="notebookIcon" />
+              <span>{{ notebookName() }}</span>
+            </button>
+
+            <button
+              type="button"
+              class="editor__chip editor__labels"
+              (click)="chooseLabels()"
+              [attr.aria-label]="i18n.t('a11y.noteLabels')"
+            >
+              <fa-icon [icon]="labelIcon" />
+              <span>{{ labelSummary() }}</span>
+            </button>
+          </div>
 
           <app-markdown-toolbar
             class="editor__toolbar"
@@ -155,12 +170,17 @@ type EditorStatus = 'loading' | 'ready' | 'missing';
       outline: none;
     }
 
-    .editor__notebook {
+    .editor__chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 2px 0 6px;
+    }
+
+    .editor__chip {
       display: flex;
       align-items: center;
       gap: 6px;
-      align-self: flex-start;
-      margin: 2px 0 6px;
       padding: 4px 10px;
       border: none;
       border-radius: 999px;
@@ -228,12 +248,15 @@ export class NoteEditorPage implements OnDestroy {
   private readonly router = inject(Router);
   private readonly notebooks = inject(NotebooksStore);
   private readonly notebookPrompts = inject(NotebookPrompts);
+  private readonly labels = inject(LabelsStore);
+  private readonly labelPrompts = inject(LabelPrompts);
 
   protected readonly backIcon = faArrowLeft;
   protected readonly previewIcon = faEye;
   protected readonly editIcon = faPen;
   protected readonly missingIcon = faCircleQuestion;
   protected readonly notebookIcon = faBook;
+  protected readonly labelIcon = faTag;
 
   protected readonly title = signal('');
   protected readonly content = signal('');
@@ -245,6 +268,12 @@ export class NoteEditorPage implements OnDestroy {
   protected readonly notebookName = computed(
     () => this.notebooks.find(this.notebookId())?.name ?? '',
   );
+
+  private readonly labelIds = signal<readonly string[]>([]);
+  protected readonly labelSummary = computed(() => {
+    const names = this.labels.names(this.labelIds());
+    return names.length ? names.join(', ') : this.i18n.t('label.assign');
+  });
 
   private readonly textareaRef = viewChild<ElementRef<HTMLTextAreaElement>>('textarea');
 
@@ -342,6 +371,17 @@ export class NoteEditorPage implements OnDestroy {
     this.notebookId.set(target);
   }
 
+  /** Flushed first for the same `updatedAt` reason as `chooseNotebook`. */
+  protected async chooseLabels(): Promise<void> {
+    const chosen = await this.labelPrompts.pickLabels(this.labelIds());
+    if (chosen === undefined) {
+      return;
+    }
+    await this.flush();
+    await this.store.setLabels(this.id(), chosen);
+    this.labelIds.set(chosen);
+  }
+
   private async loadNote(id: string): Promise<void> {
     const note = await this.notes.find(id);
     if (!note) {
@@ -351,6 +391,7 @@ export class NoteEditorPage implements OnDestroy {
     this.title.set(note.title);
     this.content.set(note.content);
     this.notebookId.set(note.notebookId);
+    this.labelIds.set(note.labels);
     this.status.set('ready');
   }
 

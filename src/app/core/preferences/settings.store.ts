@@ -35,6 +35,7 @@ export class SettingsStore {
   readonly lastSelectedNotebookId: Signal<string | null> = this.field(
     (s) => s.lastSelectedNotebookId,
   );
+  readonly trashAutoPurgeDays: Signal<number> = this.field((s) => s.trashAutoPurgeDays);
 
   constructor() {
     effect(() => {
@@ -79,6 +80,10 @@ export class SettingsStore {
     this.state.update((s) => ({ ...s, lastSelectedNotebookId }));
   }
 
+  setTrashAutoPurgeDays(trashAutoPurgeDays: number): void {
+    this.state.update((s) => ({ ...s, trashAutoPurgeDays }));
+  }
+
   snapshot(): Settings {
     const state = this.state();
     return {
@@ -87,6 +92,7 @@ export class SettingsStore {
       noteLayout: state.noteLayout,
       sortOrder: state.sortOrder,
       lastSelectedNotebookId: state.lastSelectedNotebookId,
+      trashAutoPurgeDays: state.trashAutoPurgeDays,
     };
   }
 

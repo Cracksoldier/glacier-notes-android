@@ -51,6 +51,49 @@ export const en = {
   'move.heading': 'Move to',
   'move.empty': 'No other notebooks',
 
+  'label.create': 'New label',
+  'label.deleteTitle': 'Delete label "{name}"?',
+  // The desktop's delete strips the label from every note and keeps the notes
+  // (label-repo.ts). Saying so removes the obvious fear.
+  'label.deleteHint': 'The notes keeping this label are not deleted.',
+  // android: the desktop edits labels inline, where an empty edit just reverts.
+  'label.nameRequired': 'Enter a name for the label.',
+  'label.name': 'Label name',
+  'label.none': 'No labels yet',
+  'label.assign': 'Labels',
+  'label.noneAvailable': 'No labels yet. Create one first.',
+  'label.empty': 'No notes carry this label.',
+
+  'note.actions': 'Note actions',
+  'note.pin': 'Pin',
+  'note.unpin': 'Unpin',
+  'note.color': 'Color',
+  'note.colorNone': 'No color',
+  'note.labels': 'Labels',
+  'note.archive': 'Archive',
+  'note.unarchive': 'Restore from archive',
+  'note.moveToTrash': 'Move to trash',
+  'note.restore': 'Restore',
+  'note.deleteForever': 'Delete forever',
+  'note.deleteForeverTitle': 'Delete this note forever?',
+  'note.deleteForeverHint': 'This cannot be undone.',
+
+  'color.red': 'Red',
+  'color.orange': 'Orange',
+  'color.yellow': 'Yellow',
+  'color.green': 'Green',
+  'color.teal': 'Teal',
+  'color.blue': 'Blue',
+  'color.purple': 'Purple',
+  'color.pink': 'Pink',
+
+  'trash.emptyAction': 'Empty trash',
+  'trash.emptyTitle': 'Empty the trash?',
+  'trash.emptyHint': 'All {count} notes in the trash are deleted forever.',
+  'trash.emptyHintOne': 'The note in the trash is deleted forever.',
+  // android: the desktop purges silently at startup and never explains itself.
+  'trash.autoPurgeNotice': 'Notes here are deleted automatically after {days} days.',
+
   'editor.titlePlaceholder': 'Title',
   'editor.contentPlaceholder': 'Take a note…',
   'editor.edit': 'Edit',
@@ -77,9 +120,9 @@ export const en = {
   'common.cancel': 'Cancel',
   'common.delete': 'Delete',
   'common.rename': 'Rename',
+  'common.done': 'Done',
 
   // android: placeholder copy for destinations the desktop reaches differently.
-  'placeholder.labels': 'Labels let you tag notes across notebooks.',
   'placeholder.search': 'Full-text search over titles, bodies and checklists.',
   'placeholder.importExport': 'Exchange .glacier.json archives with Glacier Notes on the desktop.',
 
@@ -93,6 +136,13 @@ export const en = {
   'settings.dateSample': 'Dates look like: {date}',
   'settings.localOnly':
     'These settings are stored on this device only. They are not part of a .glacier.json export.',
+  // android: the desktop keeps trashAutoPurgeDays in its settings file with no
+  // way to change it (docs/desktop-audit.md §6, §11.7).
+  'settings.trash': 'Trash',
+  'settings.trashAutoPurge': 'Delete trashed notes after',
+  'settings.trashAutoPurgeNever': 'Never',
+  'settings.trashAutoPurgeDays': '{count} days',
+  'settings.trashAutoPurgeHint': 'Checked once each time the app starts.',
 
   // android: the desktop is pointer-driven and has no equivalent labels.
   'a11y.openMenu': 'Open navigation menu',
@@ -105,6 +155,12 @@ export const en = {
   'a11y.notebookActions': 'Notebook actions',
   'a11y.noteNotebook': 'Notebook of this note',
   'a11y.newNotebook': 'New notebook',
+  'a11y.noteActions': 'Note actions',
+  'a11y.labelActions': 'Label actions',
+  'a11y.newLabel': 'New label',
+  'a11y.noteLabels': 'Labels of this note',
+  'a11y.trashAutoPurge': 'Delete trashed notes after',
+  'a11y.emptyTrash': 'Empty trash',
 } as const;
 
 export type TranslationKey = keyof typeof en;

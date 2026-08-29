@@ -13,6 +13,8 @@ import {
 
 import { I18nService } from './core/localization/i18n.service';
 import { ThemeService } from './core/preferences/theme.service';
+import { LabelPrompts } from './features/labels/label-prompts';
+import { LabelsStore } from './features/labels/labels.store';
 import { NotebookPrompts } from './features/notebooks/notebook-prompts';
 import { NotebooksStore } from './features/notebooks/notebooks.store';
 import {
@@ -38,7 +40,6 @@ interface DrawerSection {
   readonly title: string;
   readonly entries: readonly DrawerEntry[];
   readonly createLabel?: string;
-  /** Absent while a section's create flow does not exist yet — labels, until M08. */
   readonly onCreate?: () => void;
 }
 
@@ -66,11 +67,12 @@ export class AppComponent {
   readonly i18n = inject(I18nService);
   private readonly notebooks = inject(NotebooksStore);
   private readonly notebookPrompts = inject(NotebookPrompts);
+  private readonly labels = inject(LabelsStore);
+  private readonly labelPrompts = inject(LabelPrompts);
 
   readonly icons = { brand: faSnowflake, add: faPlus };
 
-  // Mirrors the desktop sidebar's order (docs/desktop-audit.md §6). The label
-  // list stays empty and its create row disabled until M08.
+  // Mirrors the desktop sidebar's order (docs/desktop-audit.md §6).
   readonly sections = computed<readonly DrawerSection[]>(() => [
     {
       title: this.i18n.t('sidebar.notes'),
@@ -91,8 +93,16 @@ export class AppComponent {
     },
     {
       title: this.i18n.t('sidebar.labels'),
-      entries: [{ label: this.i18n.t('sidebar.allLabels'), path: '/labels', icon: faTag }],
+      entries: [
+        { label: this.i18n.t('sidebar.allLabels'), path: '/labels', icon: faTag },
+        ...this.labels.labels().map((label) => ({
+          label: label.name,
+          path: `/labels/${label.id}`,
+          icon: faTag,
+        })),
+      ],
       createLabel: this.i18n.t('sidebar.newLabel'),
+      onCreate: () => void this.labelPrompts.create(),
     },
   ]);
 
@@ -105,5 +115,6 @@ export class AppComponent {
 
   constructor() {
     void this.notebooks.load();
+    void this.labels.load();
   }
 }

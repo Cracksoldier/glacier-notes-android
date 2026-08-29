@@ -178,6 +178,18 @@ export async function purgeNote(adapter: DatabaseAdapter, id: string): Promise<s
   return referencedImageIds(note);
 }
 
+/** Purges the given notes and accumulates the image ids they referenced. */
+export async function purgeNotes(
+  adapter: DatabaseAdapter,
+  ids: readonly string[],
+): Promise<string[]> {
+  const imageIds: string[] = [];
+  for (const id of ids) {
+    imageIds.push(...(await purgeNote(adapter, id)));
+  }
+  return imageIds;
+}
+
 export async function requireNoteExists(adapter: DatabaseAdapter, id: string): Promise<void> {
   await requireRow(adapter, 'notes', id, 'note');
 }
