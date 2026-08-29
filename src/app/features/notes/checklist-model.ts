@@ -17,6 +17,14 @@ export function newItem(text: string, sortOrder: number): ChecklistItem {
   return { id: newId(), text, checked: false, sortOrder };
 }
 
+function bySortOrder(a: ChecklistItem, b: ChecklistItem): number {
+  return a.sortOrder - b.sortOrder;
+}
+
+function canonical(items: readonly ChecklistItem[]): ChecklistItem[] {
+  return [...items].sort(bySortOrder);
+}
+
 /**
  * Display only — the returned grouping is never written back on its own. A
  * checked item keeps its `sortOrder`, so unchecking it returns it to where it
@@ -26,7 +34,7 @@ export function displayOrder(
   items: readonly ChecklistItem[],
   moveCheckedToBottom: boolean,
 ): ChecklistItem[] {
-  const sorted = [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+  const sorted = canonical(items);
   if (!moveCheckedToBottom) {
     return sorted;
   }
@@ -36,6 +44,27 @@ export function displayOrder(
 /** Array position is the source of truth; `note-writes.ts` re-derives it the same way. */
 export function resequence(items: readonly ChecklistItem[]): ChecklistItem[] {
   return items.map((item, index) => ({ ...item, sortOrder: index }));
+}
+
+/**
+ * Both of these take an *item id* rather than a display index, and rebuild from
+ * the canonical order. Splicing the displayed array and resequencing it — which
+ * is what they used to do — writes the completed-item grouping back into
+ * `sortOrder`, so adding or deleting an unrelated row silently stranded every
+ * ticked item at the bottom for good. Only a drag may commit that grouping.
+ */
+export function insertItemAfter(
+  items: readonly ChecklistItem[],
+  anchorId: string,
+  item: ChecklistItem,
+): ChecklistItem[] {
+  const order = canonical(items);
+  order.splice(order.findIndex((entry) => entry.id === anchorId) + 1, 0, item);
+  return resequence(order);
+}
+
+export function removeItem(items: readonly ChecklistItem[], id: string): ChecklistItem[] {
+  return resequence(canonical(items).filter((entry) => entry.id !== id));
 }
 
 /**
@@ -83,8 +112,7 @@ export function textToChecklist(content: string): ChecklistItem[] {
 
 /** The inverse, in canonical order — the grouped display is not what gets written. */
 export function checklistToText(items: readonly ChecklistItem[]): string {
-  return [...items]
-    .sort((a, b) => a.sortOrder - b.sortOrder)
+  return canonical(items)
     .map((item) => `- [${item.checked ? 'x' : ' '}] ${item.text}`)
     .join('\n');
 }

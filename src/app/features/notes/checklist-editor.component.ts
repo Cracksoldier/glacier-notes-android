@@ -15,7 +15,13 @@ import { IonReorder, IonReorderGroup, type ItemReorderEventDetail } from '@ionic
 import { I18nService } from '../../core/localization/i18n.service';
 import type { ChecklistItem } from '../../core/models/checklist-item';
 import { faGripVertical, faPlus, faXmark } from '../../shared/utilities/glacier-icons';
-import { displayOrder, newItem, reorderItems, resequence } from './checklist-model';
+import {
+  displayOrder,
+  insertItemAfter,
+  newItem,
+  removeItem,
+  reorderItems,
+} from './checklist-model';
 
 /**
  * The desktop's checklist editor with its HTML5 drag-and-drop replaced by
@@ -192,18 +198,22 @@ export class ChecklistEditorComponent {
     this.items.update((items) => [...items, item]);
   }
 
+  /**
+   * The row is placed after the anchor's *canonical* neighbour, which with
+   * "move checked to bottom" on is not always the row below it on screen. That
+   * is the cost of never writing the display grouping back — see
+   * `insertItemAfter`.
+   */
   protected insertAfter(displayIndex: number): void {
-    const display = [...this.displayed()];
+    const anchor = this.displayed()[displayIndex];
     const item = newItem('', 0);
-    display.splice(displayIndex + 1, 0, item);
     this.pendingFocusId = item.id;
-    this.items.set(resequence(display));
+    this.items.update((items) => insertItemAfter(items, anchor.id, item));
   }
 
   protected removeAt(displayIndex: number): void {
-    const display = [...this.displayed()];
-    display.splice(displayIndex, 1);
-    this.items.set(resequence(display));
+    const { id } = this.displayed()[displayIndex];
+    this.items.update((items) => removeItem(items, id));
   }
 
   protected onKeydown(event: KeyboardEvent, displayIndex: number): void {

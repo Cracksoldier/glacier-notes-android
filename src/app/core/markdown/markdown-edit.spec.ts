@@ -150,6 +150,23 @@ describe('toggleCode', () => {
     expect(result.value).toBe('```\na\nb\n```');
     expect(result.value.slice(result.selStart, result.selEnd)).toBe('a\nb');
   });
+
+  // The single-line branch has always toggled; the fenced one only inserted, so
+  // a second press nested the fences instead of removing them.
+  it('removes a fence it already applied rather than nesting a second one', () => {
+    const once = toggleCode('a\nb', 0, 3);
+    const twice = toggleCode(once.value, once.selStart, once.selEnd);
+
+    expect(twice.value).toBe('a\nb');
+    expect(twice.value.slice(twice.selStart, twice.selEnd)).toBe('a\nb');
+  });
+
+  it('leaves surrounding text in place when it removes a fence', () => {
+    const once = toggleCode('intro\na\nb\nend', 6, 9);
+    const twice = toggleCode(once.value, once.selStart, once.selEnd);
+
+    expect(twice.value).toBe('intro\na\nb\nend');
+  });
 });
 
 describe('applyToolbarAction', () => {
@@ -203,6 +220,15 @@ describe('insertImageReference', () => {
 
     expect(result.selStart).toBe(result.value.length);
     expect(result.selEnd).toBe(result.selStart);
+  });
+
+  // The caret used to stop short of a newline the body already had, which put
+  // it on the image's own line — the one place the docstring promises it is not.
+  it('steps over a newline the body already had, not only one it wrote', () => {
+    const result = insertImageReference('one\n\ntwo', 4, 4, ID);
+
+    expect(result.value).toBe(`one\n![](glacier-img://${ID})\ntwo`);
+    expect(result.value.slice(result.selStart)).toBe('two');
   });
 
   it('sanitizes an alt text that would otherwise end the link early', () => {

@@ -4,7 +4,9 @@ import type { ChecklistItem } from '../../core/models/checklist-item';
 import {
   checklistToText,
   displayOrder,
+  insertItemAfter,
   newItem,
+  removeItem,
   reorderItems,
   resequence,
   textToChecklist,
@@ -83,6 +85,53 @@ describe('reorderItems', () => {
       ['b', 1],
       ['c', 2],
     ]);
+  });
+});
+
+/**
+ * These two used to splice the *displayed* array and resequence it, which wrote
+ * the completed-item grouping into `sortOrder` — so touching any row stranded
+ * every ticked item at the bottom permanently, in defiance of the one rule the
+ * two orderings have.
+ */
+describe('removeItem', () => {
+  it('closes the gap and renumbers from canonical order', () => {
+    const items = [item('a', 0), item('b', 1), item('c', 2)];
+
+    expect(removeItem(items, 'i-b').map((i) => [i.text, i.sortOrder])).toEqual([
+      ['a', 0],
+      ['c', 1],
+    ]);
+  });
+
+  it('leaves a checked item where unchecking would return it to', () => {
+    const items = [item('a', 0), item('b', 1, true), item('c', 2), item('d', 3)];
+
+    const result = removeItem(items, 'i-d');
+
+    expect(result.find((i) => i.text === 'b')?.sortOrder).toBe(1);
+  });
+});
+
+describe('insertItemAfter', () => {
+  it('places the new row after its anchor and renumbers the rest', () => {
+    const items = [item('a', 0), item('b', 1)];
+
+    const result = insertItemAfter(items, 'i-a', newItem('new', 0));
+
+    expect(result.map((i) => [i.text, i.sortOrder])).toEqual([
+      ['a', 0],
+      ['new', 1],
+      ['b', 2],
+    ]);
+  });
+
+  it('leaves a checked item ahead of the insertion point untouched', () => {
+    const items = [item('a', 0), item('b', 1, true), item('c', 2)];
+
+    const result = insertItemAfter(items, 'i-c', newItem('new', 0));
+
+    expect(result.find((i) => i.text === 'b')?.sortOrder).toBe(1);
   });
 });
 

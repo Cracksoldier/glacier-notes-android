@@ -122,6 +122,34 @@ describe('ChecklistEditorComponent', () => {
   });
 
   /**
+   * Deleting or inserting used to renumber from the grouped rows on screen,
+   * which made the grouping canonical: unticking then returned the item to the
+   * bottom rather than to the place it was ticked in. Only a drag may do that.
+   */
+  it('does not commit the grouping when an unrelated row is removed', () => {
+    render([item('a', 'first', 0), item('b', 'second', 1, true), item('c', 'third', 2)], true);
+
+    // Displayed as first, third, second — so row 1 is "third".
+    host.querySelectorAll<HTMLButtonElement>('.checklist__remove')[1]?.click();
+    fixture.detectChanges();
+
+    expect(items()).toEqual([item('a', 'first', 0), item('b', 'second', 1, true)]);
+  });
+
+  it('does not commit the grouping when a row is inserted', () => {
+    render([item('a', 'first', 0), item('b', 'second', 1, true), item('c', 'third', 2)], true);
+
+    keydown(0, 'Enter');
+
+    expect(items().map((i) => [i.text, i.sortOrder])).toEqual([
+      ['first', 0],
+      ['', 1],
+      ['second', 2],
+      ['third', 3],
+    ]);
+  });
+
+  /**
    * jsdom cannot drive the real gesture, so the reorder is exercised through the
    * event Ionic emits. `complete(false)` is what keeps Angular's `@for` the only
    * thing that moves a node.

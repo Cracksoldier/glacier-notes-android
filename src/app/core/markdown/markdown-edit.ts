@@ -158,10 +158,15 @@ export function insertImageReference(
   const lead = before === '' || before.endsWith('\n') ? '' : '\n';
   const trail = after.startsWith('\n') ? '' : '\n';
   const markup = `${lead}![${imageAlt(alt)}](glacier-img://${imageId})${trail}`;
+  // Steps over the trailing newline whether this call wrote it or the body
+  // already had one. Counting only the inserted character left the caret on the
+  // image's own line whenever the caret was mid-body, so the next thing typed
+  // ran into the image markup.
+  const caret = selStart + markup.length + (trail === '' ? 1 : 0);
   return {
     value: before + markup + after,
-    selStart: selStart + markup.length,
-    selEnd: selStart + markup.length,
+    selStart: caret,
+    selEnd: caret,
   };
 }
 
@@ -195,15 +200,29 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+const FENCE_OPEN = '```\n';
+const FENCE_CLOSE = '\n```';
+
 export function toggleCode(value: string, selStart: number, selEnd: number): EditResult {
   const selected = value.slice(selStart, selEnd);
-  if (selected.includes('\n')) {
-    const inserted = '```\n' + selected + '\n```';
+  if (!selected.includes('\n')) {
+    return wrapSelection(value, selStart, selEnd, '`');
+  }
+  const before = value.slice(0, selStart);
+  const after = value.slice(selEnd);
+  // The same before/after test `wrapSelection` does, only across the newline the
+  // fence markers carry. Without it the multiline branch was insert-only and a
+  // second press nested the fences, against this file's own toggling contract.
+  if (before.endsWith(FENCE_OPEN) && after.startsWith(FENCE_CLOSE)) {
     return {
-      value: value.slice(0, selStart) + inserted + value.slice(selEnd),
-      selStart: selStart + 4,
-      selEnd: selStart + 4 + selected.length,
+      value: before.slice(0, -FENCE_OPEN.length) + selected + after.slice(FENCE_CLOSE.length),
+      selStart: selStart - FENCE_OPEN.length,
+      selEnd: selEnd - FENCE_OPEN.length,
     };
   }
-  return wrapSelection(value, selStart, selEnd, '`');
+  return {
+    value: before + FENCE_OPEN + selected + FENCE_CLOSE + after,
+    selStart: selStart + FENCE_OPEN.length,
+    selEnd: selStart + FENCE_OPEN.length + selected.length,
+  };
 }
