@@ -61,6 +61,10 @@
   --ion-card-background: #1b263b;
   --ion-border-color: #2c3e54;
 
+  // The dark accent already clears AA as text (9.05:1 on the background), so the
+  // text variant is the accent itself. Only the light theme needs a darker one.
+  --glacier-accent-text: #4cc9f0;
+
   @include color-steps(#0d1b2a, #e0e6ed);
 }
 
@@ -68,9 +72,10 @@
   --ion-color-primary: #0d8ecf;
   --ion-color-primary-rgb: 13, 142, 207;
   // Desktop pairs this accent with --color-bg (#f4f7fa), which measures 3.37:1;
-  // white reaches 3.63:1. Neither clears WCAG AA for small text, so nothing may
-  // draw text on this accent — it fills icons and indicators only, where 3.63:1
-  // clears the 3:1 non-text bar. See docs/design-system.md.
+  // white reaches 3.63:1. Neither clears WCAG AA for small text, so this value
+  // may only fill icons and indicators, where it clears the 3:1 non-text bar.
+  // Accent-coloured *text* reads --glacier-accent-text below.
+  // See docs/design-system.md.
   --ion-color-primary-contrast: #ffffff;
   --ion-color-primary-contrast-rgb: 255, 255, 255;
   --ion-color-primary-shade: #0b7db6;
@@ -100,6 +105,12 @@
   --ion-item-background: #ffffff;
   --ion-card-background: #ffffff;
   --ion-border-color: #d5dee8;
+
+  // The accent's own hue and saturation, darkened until it clears AA on both
+  // surfaces text sits on: 4.93:1 on #ffffff and 4.59:1 on #f4f7fa. The nearer
+  // --ion-color-primary-shade (#0b7db6) is not enough — it reaches 4.22:1 on
+  // #f4f7fa, so it would pass on a card and fail on the page behind it.
+  --glacier-accent-text: #0b77ad;
 
   @include color-steps(#f4f7fa, #1b263b);
 }

@@ -18,6 +18,21 @@ function tokens(themeClass: string): Map<string, string> {
   return declarations;
 }
 
+// WCAG 2.1 relative luminance and contrast ratio.
+function luminance(hex: string): number {
+  const channels = [1, 3, 5].map((offset) => {
+    const value = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function contrast(a: string, b: string): number {
+  const [la, lb] = [luminance(a), luminance(b)];
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
 describe('Ionic theme variables', () => {
   it('maps the desktop accent onto --ion-color-primary', () => {
     expect(tokens('theme-dark').get('--ion-color-primary')).toBe('#4cc9f0');
@@ -29,6 +44,29 @@ describe('Ionic theme variables', () => {
     expect(tokens('theme-light').get('--ion-color-primary-rgb')).toBe('13, 142, 207');
     expect(tokens('theme-dark').get('--ion-background-color-rgb')).toBe('13, 27, 42');
     expect(tokens('theme-light').get('--ion-background-color-rgb')).toBe('244, 247, 250');
+  });
+
+  // Both themes draw accent-coloured text (markdown links, the checked segment
+  // label, alert buttons). The raw light accent measures 3.37:1 on the page
+  // background, so that text reads a darker token instead; this pins the ratio
+  // rather than the hex, since the point is the threshold and not the colour.
+  it('keeps accent text above the AA contrast bar in both themes', () => {
+    const surfaces = {
+      'theme-dark': ['#0d1b2a', '#1b263b'],
+      'theme-light': ['#ffffff', '#f4f7fa'],
+    };
+
+    for (const [theme, backgrounds] of Object.entries(surfaces)) {
+      const accentText = tokens(theme).get('--glacier-accent-text');
+      expect(accentText, theme).toBeTruthy();
+
+      for (const background of backgrounds) {
+        expect(
+          contrast(accentText ?? '', background),
+          `${theme} on ${background}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    }
   });
 
   it('emits a full step ramp running from background to text', () => {

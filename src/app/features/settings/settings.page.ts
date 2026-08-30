@@ -192,6 +192,12 @@ import { NotebooksStore } from '../notebooks/notebooks.store';
     .settings__sample {
       white-space: normal;
     }
+
+    /* The checked label is text, so it needs the darker accent. Ionic derives
+       --indicator-color from --color-checked, so the underline follows. */
+    ion-segment-button {
+      --color-checked: var(--glacier-accent-text);
+    }
   `,
 })
 export class SettingsPage {

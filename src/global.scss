@@ -116,7 +116,7 @@ ion-fab[vertical="bottom"] {
   }
 
   a {
-    color: var(--color-accent);
+    color: var(--glacier-accent-text);
   }
 
   code {
@@ -159,6 +159,18 @@ ion-fab[vertical="bottom"] {
     border: none;
     border-top: 1px solid var(--color-border);
   }
+}
+
+// Ionic's MD alert draws its buttons in --ion-color-primary, which is a text
+// context the light accent does not clear. Retargeting the variable on the host
+// rather than restyling `.alert-button`, because ion-alert is a *scoped*
+// component: Stencil suffixes its internal selectors into
+// `.alert-button.sc-ion-alert-md`, which outranks any descendant selector
+// written here. Inside an alert the accent only draws button text and radio
+// indicators, so moving all of it is safe.
+// Global because an overlay renders outside any component's style scope.
+ion-alert {
+  --ion-color-primary: var(--glacier-accent-text);
 }
 
 // The note colour picker's swatches. Ionic renders overlays outside any

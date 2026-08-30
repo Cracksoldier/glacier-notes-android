@@ -47,7 +47,7 @@ contrast ratios:
 
 | Pair | Ratio | WCAG AA (small text) |
 | --- | --- | --- |
-| `#4cc9f0` on `#0d1b2a` (dark) | 8.89:1 | pass |
+| `#4cc9f0` on `#0d1b2a` (dark) | 9.05:1 | pass |
 | `#0d8ecf` on `#f4f7fa` | 3.37:1 | fail |
 | `#0d8ecf` on `#ffffff` | 3.63:1 | fail |
 
@@ -56,18 +56,46 @@ traceable, and `--ion-color-primary-contrast` is `#ffffff` rather than the
 desktop's `--color-bg`. That is the one place the Android port knowingly departs
 from the desktop tokens.
 
-**The constraint that follows: nothing may draw text on the accent in the light
-theme.** No `color="primary"` and no `var(--ion-color-primary)` appears anywhere
-in `src/app/`, so the accent reaches the screen only through Ionic's own
-defaults — the FAB, the segment indicator, toggles and checkboxes. Every one of
-those is an icon or an indicator, and 3.63:1 clears the 3:1 WCAG bar for
-non-text contrast. A future accent-filled *button with a label* would not, and
-would need a darker fill (`#0b7db6` measures 4.54:1 on white) introduced at that
-point.
+**The constraint that follows: `--ion-color-primary` may fill icons and
+indicators, but nothing may draw text in it.** As a fill it backs the FAB, the
+checked toggle and the checked checkbox, each of which carries a white icon or
+knob at 3.63:1 — over the 3:1 WCAG bar for non-text contrast.
 
-An earlier `--glacier-accent-strong` token existed for exactly that case and was
-removed at the M01–M10 review: it never had a consumer, and in the light theme
-it duplicated `--ion-color-primary-shade` anyway.
+Text that wants to look accent-coloured reads `--glacier-accent-text` instead:
+`#0b77ad` in the light theme, which is the accent's own hue and saturation
+darkened until it clears AA on both surfaces text sits on. The dark theme sets
+it to the accent itself, which already passes.
+
+| Pair | Ratio | WCAG AA (small text) |
+| --- | --- | --- |
+| `#0b77ad` on `#ffffff` | 4.93:1 | pass |
+| `#0b77ad` on `#f4f7fa` | 4.59:1 | pass |
+
+`#0b7db6` — `--ion-color-primary-shade`, and the value the removed
+`--glacier-accent-strong` token carried — is *not* enough: it reaches 4.54:1 on
+white but only 4.22:1 on `#f4f7fa`, so it would pass on a card and fail on the
+page behind it. `variables.spec.ts` asserts the ratio rather than the hex, so a
+future palette change fails CI on the threshold it actually has to meet.
+
+Three places consume it today, all found by driving the light theme in the
+emulator rather than by reading the source — the first two reach the accent
+through `--color-accent`, which is a *different token with the same hex*, so
+grepping for `--ion-color-primary` misses them:
+
+| Consumer | Where |
+| --- | --- |
+| Rendered Markdown links | `src/global.scss`, `.markdown-body a` |
+| `ion-alert` buttons | `src/global.scss`, `ion-alert .alert-button` |
+| Checked `ion-segment-button` label | `settings.page.ts`, via `--color-checked` |
+
+Ionic derives `--indicator-color` from `--color-checked`, so setting the label
+colour moves the segment's underline with it.
+
+**Known gap, not addressed here:** a note card painted with one of the eight
+`--note-*` colours is a third surface, and the accent does not clear AA on it
+(`#0b77ad` on `--note-purple` is 3.73:1). That card is already the weaker case
+for `--color-text-muted`, which measures 4.14:1 there, so accent text is not
+what makes it fail — the coloured-card surface needs its own pass.
 
 ## Typography
 
