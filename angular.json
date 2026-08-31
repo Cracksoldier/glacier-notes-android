@@ -105,11 +105,17 @@
           "options": {
             "tsConfig": "tsconfig.spec.json",
             "buildTarget": "::development",
-            "setupFiles": ["src/test-setup.ts"]
+            "setupFiles": ["src/test-setup.ts"],
+            "exclude": ["src/benchmarks/**/*.spec.ts"]
           },
           "configurations": {
             "ci": {
               "watch": false
+            },
+            "bench": {
+              "watch": false,
+              "include": ["src/benchmarks/**/*.spec.ts"],
+              "exclude": []
             }
           }
         },

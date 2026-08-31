@@ -79,6 +79,34 @@ describe('note ordering', () => {
     expect(titles(await repos.notes.list({ kind: 'archived' }))).toEqual(['special', 'plain']);
   });
 
+  // The desktop replaces the grid with `[...active(), ...archived()]` while a
+  // query is present, so the archived hits form a block below the active ones
+  // however recently they were touched.
+  it('puts the archived block below the active one in the all scope', async () => {
+    const oldActive = await create('old-active');
+    tick();
+    const archived = await create('archived');
+    tick();
+    await create('new-active');
+    tick();
+    await repos.notes.setArchived(archived.id, true);
+    tick();
+    await repos.notes.trash(oldActive.id);
+
+    expect(titles(await repos.notes.list({ kind: 'all' }))).toEqual(['new-active', 'archived']);
+  });
+
+  it('keeps pinned notes above the active/archived split in the all scope', async () => {
+    await create('active');
+    tick();
+    const pinned = await create('pinned-archived');
+    tick();
+    await repos.notes.setArchived(pinned.id, true);
+    await repos.notes.setPinned(pinned.id, true);
+
+    expect(titles(await repos.notes.list({ kind: 'all' }))).toEqual(['pinned-archived', 'active']);
+  });
+
   it('excludes archived and trashed notes from notebook and label views', async () => {
     const label = await repos.labels.create('Work');
     const archived = await create('archived');

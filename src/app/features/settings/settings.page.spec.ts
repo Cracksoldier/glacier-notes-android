@@ -84,7 +84,7 @@ describe('SettingsPage', () => {
   it('offers the desktop default plus an off switch for the trash purge window', () => {
     const host: HTMLElement = fixture.nativeElement;
 
-    expect(selectOptions(host, 1)).toEqual([
+    expect(selectOptions(host, 2)).toEqual([
       'Never',
       '7 days',
       '14 days',
@@ -107,6 +107,29 @@ describe('SettingsPage', () => {
     const host: HTMLElement = fixture.nativeElement;
 
     expect(host.textContent).toContain('.glacier.json');
+  });
+
+  it('offers the three sort orders and starts on the desktop default', () => {
+    const host: HTMLElement = fixture.nativeElement;
+
+    expect(selectOptions(host, 1)).toEqual(['Last edited', 'Date created', 'Title']);
+    expect(TestBed.inject(SettingsStore).sortOrder()).toBe('updatedDesc');
+  });
+
+  it('writes a chosen sort order to settings', () => {
+    fixture.componentInstance.onSortOrderChange(
+      new CustomEvent('ionChange', { detail: { value: 'titleAsc' } }),
+    );
+
+    expect(TestBed.inject(SettingsStore).sortOrder()).toBe('titleAsc');
+  });
+
+  // The Font Awesome CC BY 4.0 licence requires the credit to be in the app, not
+  // only in the repository (docs/design-system.md).
+  it('carries the icon attribution', () => {
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Font Awesome Free, licensed CC BY 4.0',
+    );
   });
 
   describe('the database diagnostic', () => {

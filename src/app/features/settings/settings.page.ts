@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import {
   IonButtons,
   IonContent,
@@ -19,8 +21,9 @@ import {
 } from '@ionic/angular';
 
 import { DatabaseService } from '../../core/database/database.service';
+import type { TranslationKey } from '../../core/localization/en';
 import { I18nService } from '../../core/localization/i18n.service';
-import type { LanguageCode, ThemeMode } from '../../core/preferences/settings.model';
+import type { LanguageCode, NoteSortOrder, ThemeMode } from '../../core/preferences/settings.model';
 import { SettingsStore } from '../../core/preferences/settings.store';
 import { ThemeService } from '../../core/preferences/theme.service';
 import { NotebooksStore } from '../notebooks/notebooks.store';
@@ -125,6 +128,28 @@ import { NotebooksStore } from '../notebooks/notebooks.store';
       </ion-list>
 
       <ion-list [inset]="true">
+        <ion-list-header>{{ i18n.t('settings.notes') }}</ion-list-header>
+        <ion-item lines="none">
+          <ion-select
+            [value]="settings.sortOrder()"
+            (ionChange)="onSortOrderChange($event)"
+            [label]="i18n.t('settings.sortOrder')"
+            labelPlacement="stacked"
+            [interfaceOptions]="{ header: i18n.t('settings.sortOrder') }"
+          >
+            @for (order of sortOrders; track order.value) {
+              <ion-select-option [value]="order.value">
+                {{ i18n.t(order.labelKey) }}
+              </ion-select-option>
+            }
+          </ion-select>
+        </ion-item>
+        <ion-item lines="none">
+          <ion-note class="settings__sample">{{ i18n.t('settings.sortOrderHint') }}</ion-note>
+        </ion-item>
+      </ion-list>
+
+      <ion-list [inset]="true">
         <ion-list-header>{{ i18n.t('settings.checklists') }}</ion-list-header>
         <ion-item lines="none">
           <ion-toggle
@@ -182,8 +207,20 @@ import { NotebooksStore } from '../notebooks/notebooks.store';
       }
 
       <ion-list [inset]="true">
+        <ion-list-header>{{ i18n.t('settings.about') }}</ion-list-header>
         <ion-item lines="none">
-          <ion-note>{{ i18n.t('settings.localOnly') }}</ion-note>
+          <ion-label>
+            {{ i18n.t('settings.aboutApp') }}
+            @if (version(); as value) {
+              <ion-note class="settings__sample"> — {{ i18n.t('settings.aboutVersion', { version: value }) }}</ion-note>
+            }
+          </ion-label>
+        </ion-item>
+        <ion-item lines="none">
+          <ion-note class="settings__sample">{{ i18n.t('settings.attributionIcons') }}</ion-note>
+        </ion-item>
+        <ion-item lines="none">
+          <ion-note class="settings__sample">{{ i18n.t('settings.localOnly') }}</ion-note>
         </ion-item>
       </ion-list>
     </ion-content>
@@ -219,6 +256,29 @@ export class SettingsPage {
   /** 30 is the desktop's default (`docs/desktop-audit.md` §6); 0 is offered separately as "Never". */
   readonly autoPurgeChoices = [7, 14, 30, 60, 90];
 
+  /**
+   * Listed here rather than derived from `NOTE_SORT_ORDERS`, because each option
+   * needs a translation key and the compiler should reject an order added there
+   * without one.
+   */
+  readonly sortOrders: readonly { value: NoteSortOrder; labelKey: TranslationKey }[] = [
+    { value: 'updatedDesc', labelKey: 'settings.sortUpdatedDesc' },
+    { value: 'createdDesc', labelKey: 'settings.sortCreatedDesc' },
+    { value: 'titleAsc', labelKey: 'settings.sortTitleAsc' },
+  ];
+
+  /**
+   * `App.getInfo()` is native-only; in the browser dev server the row simply
+   * shows the app name without a version, which is the honest answer there.
+   */
+  protected readonly version = signal('');
+
+  constructor() {
+    if (Capacitor.isNativePlatform()) {
+      void App.getInfo().then((info) => this.version.set(info.version));
+    }
+  }
+
   onThemeChange(event: Event): void {
     const { value } = (event as CustomEvent<{ value: string }>).detail;
     this.theme.setMode(value as ThemeMode);
@@ -232,6 +292,11 @@ export class SettingsPage {
   onMoveCheckedToBottomChange(event: Event): void {
     const { checked } = (event as CustomEvent<{ checked: boolean }>).detail;
     this.settings.setMoveCheckedToBottom(checked);
+  }
+
+  onSortOrderChange(event: Event): void {
+    const { value } = (event as CustomEvent<{ value: string }>).detail;
+    this.settings.setSortOrder(value as NoteSortOrder);
   }
 
   onTrashAutoPurgeChange(event: Event): void {

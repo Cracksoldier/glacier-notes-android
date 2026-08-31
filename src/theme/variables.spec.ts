@@ -69,6 +69,20 @@ describe('Ionic theme variables', () => {
     }
   });
 
+  // A search highlight is the one place text sits on the raw accent rather than
+  // on a background colour, so it needs its own ink; the desktop's choice of
+  // --color-bg measures 3.37:1 in the light theme. Pinned as a ratio for the same
+  // reason as the accent text above.
+  it('keeps highlight ink above the AA contrast bar on each theme accent', () => {
+    const accents = { 'theme-dark': '#4cc9f0', 'theme-light': '#0d8ecf' };
+
+    for (const [theme, accent] of Object.entries(accents)) {
+      const ink = tokens(theme).get('--glacier-mark-ink');
+      expect(ink, theme).toBeTruthy();
+      expect(contrast(ink ?? '', accent), `${theme} on ${accent}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it('emits a full step ramp running from background to text', () => {
     for (const theme of ['theme-dark', 'theme-light']) {
       const declarations = tokens(theme);

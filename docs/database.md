@@ -164,6 +164,36 @@ recovery is explicitly out of scope for this app.
 The plugin's own upgrade engine stays dormant: we never call
 `addUpgradeStatement`, so there is exactly one migration mechanism.
 
+### Migration 002: `notes.search_text`
+
+M11 added the first migration after the initial schema, which is also the proof
+that the contract above works on a populated file rather than only on a fresh
+one.
+
+```sql
+ALTER TABLE notes ADD COLUMN search_text TEXT NOT NULL DEFAULT '';
+```
+
+Additive, legal on a `STRICT` table, and `search_text` is neither of the two
+names §"Two banned column names" forbids. A `seed` hook then backfills every
+existing row: one `SELECT id, title, content FROM notes`, one
+`SELECT note_id, text FROM checklist_items ORDER BY note_id, sort_order`, grouped
+in TypeScript, then one `UPDATE` per note — inside the migration's transaction,
+so a database is never observable with the column present and empty.
+
+**Nothing in SQL maintains it.** No trigger, for the reason §"No triggers, and
+one statement per call" already gives: the Capacitor plugin splits statements on
+`";\n"` and shreds a trigger body. It is maintained instead by
+`refreshSearchText()`, called unconditionally at the end of `insertNote` and
+`applyNotePatch`. Why it holds the *normalized* text rather than a copy of the
+originals, and why the comparison could not simply have been `lower(title) LIKE
+…`, is `docs/search-and-sorting.md` §1–§2.
+
+`search_text` is in `NoteRow` so that `SELECT n.*` stays honestly typed, and
+`noteFromRow` maps named fields, so it never reaches the domain `Note` — there is
+a spec asserting exactly that, because a leak here would put a lowercased copy of
+every note into `.glacier.json`.
+
 ### Foreign keys and transactions
 
 `PRAGMA foreign_keys` is a **silent no-op inside a transaction**. It is set once

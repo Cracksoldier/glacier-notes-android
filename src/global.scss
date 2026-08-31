@@ -55,7 +55,19 @@ ion-fab[vertical="bottom"] {
 // Ported from the desktop's src/styles.scss. Rendered markdown is injected via
 // [innerHTML], so these must be global -- Angular's view encapsulation rewrites
 // selectors for elements the template declares, and never reaches injected ones.
-// `.markdown-inline` and the search `mark` rules stay behind with M09 and M11.
+// `.markdown-inline` stays behind with M09.
+//
+// A search highlight is one of those injected elements: `highlightHtml` builds
+// the `<mark>` after DOMPurify has run, inside a card's rendered preview and its
+// checklist rows. The card's own title mark is template-declared and picks this
+// up too, so the rule lives here once rather than twice.
+mark {
+  padding: 0 1px;
+  border-radius: 2px;
+  background-color: var(--color-accent);
+  color: var(--glacier-mark-ink);
+}
+
 .markdown-body {
   line-height: 1.5;
   word-wrap: break-word;

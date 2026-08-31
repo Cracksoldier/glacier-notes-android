@@ -1,15 +1,24 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MemoryPreferencesAdapter } from '../../core/preferences/memory-preferences.adapter';
+import { PREFERENCES_ADAPTER } from '../../core/preferences/preferences-adapter';
+import { SettingsStore } from '../../core/preferences/settings.store';
+import type { NoteView } from '../../core/repositories/note-queries';
 import { NoteRepository } from '../../core/repositories/note.repository';
 import { createTestRepositories, type TestRepositories } from '../../core/repositories/testing';
-import { compareActiveNotes, NotesStore } from './notes.store';
+import { compareNotes } from './note-sort';
+import { NotesStore } from './notes.store';
 
 describe('NotesStore', () => {
   let repositories: TestRepositories;
   let store: NotesStore;
 
   beforeEach(async () => {
+    // The store reads `SettingsStore.sortOrder()` to decide display order.
+    TestBed.configureTestingModule({
+      providers: [{ provide: PREFERENCES_ADAPTER, useValue: new MemoryPreferencesAdapter() }],
+    });
     repositories = await createTestRepositories();
     store = TestBed.inject(NotesStore);
   });
@@ -375,8 +384,8 @@ describe('NotesStore', () => {
     });
   });
 
-  describe('compareActiveNotes', () => {
-    it('agrees with the repository ordering', async () => {
+  describe('the display comparator', () => {
+    it('agrees with the repository ordering under the default sort order', async () => {
       vi.useFakeTimers();
       vi.setSystemTime(Date.UTC(2026, 0, 1));
       const notes = TestBed.inject(NoteRepository);
@@ -390,13 +399,61 @@ describe('NotesStore', () => {
       await notes.setPinned(b.id, true);
       vi.useRealTimers();
 
-      const fromSql = await notes.list({ kind: 'active' });
-      const fromTs = [...fromSql].sort(() => Math.random() - 0.5).sort(compareActiveNotes);
+      const view: NoteView = { kind: 'active' };
+      const fromSql = await notes.list(view);
+      const fromTs = [...fromSql]
+        .sort(() => Math.random() - 0.5)
+        .sort(compareNotes(view, 'updatedDesc'));
 
       expect(fromTs.map((note) => note.id)).toEqual(fromSql.map((note) => note.id));
       expect(fromSql).toHaveLength(3);
       expect(fromSql[0]?.id).toBe(b.id);
       expect([a.id, c.id]).toContain(fromSql[1]?.id);
+    });
+
+    it('re-sorts on a settings change without re-reading the list', async () => {
+      const notes = TestBed.inject(NoteRepository);
+      const settings = TestBed.inject(SettingsStore);
+      for (const title of ['Zebra', 'Äpfel', 'Apfel']) {
+        await notes.create({ notebookId: repositories.defaultNotebookId, type: 'text', title });
+      }
+      await store.setView({ kind: 'active' });
+      const list = vi.spyOn(notes, 'list');
+
+      settings.setSortOrder('titleAsc');
+
+      // `Äpfel` beside `Apfel` rather than after `Zebra` is the whole reason
+      // this ordering cannot live in SQL.
+      expect(store.notes().map((note) => note.title)).toEqual(['Apfel', 'Äpfel', 'Zebra']);
+      expect(list).not.toHaveBeenCalled();
+    });
+
+    // `trash()` deliberately does not bump `updatedAt`, so any sort key other
+    // than deletion time would scatter recently-deleted notes among old ones.
+    it('leaves the trash on deletion order whatever the sort order says', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(Date.UTC(2026, 0, 1));
+      const notes = TestBed.inject(NoteRepository);
+      const settings = TestBed.inject(SettingsStore);
+      const apfel = await notes.create({
+        notebookId: repositories.defaultNotebookId,
+        type: 'text',
+        title: 'Apfel',
+      });
+      const zebra = await notes.create({
+        notebookId: repositories.defaultNotebookId,
+        type: 'text',
+        title: 'Zebra',
+      });
+      await notes.trash(apfel.id);
+      vi.advanceTimersByTime(60_000);
+      await notes.trash(zebra.id);
+      vi.useRealTimers();
+      settings.setSortOrder('titleAsc');
+
+      await store.setView({ kind: 'trashed' });
+
+      expect(store.notes().map((note) => note.title)).toEqual(['Zebra', 'Apfel']);
     });
   });
 });

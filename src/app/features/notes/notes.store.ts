@@ -2,10 +2,12 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { ImageGcService } from '../../core/images/image-gc.service';
 import type { Note, NoteType } from '../../core/models/note';
+import { SettingsStore } from '../../core/preferences/settings.store';
 import type { NoteView } from '../../core/repositories/note-queries';
 import { NotebookRepository } from '../../core/repositories/notebook.repository';
 import { NoteRepository, type NoteUpdatePatch } from '../../core/repositories/note.repository';
 import type { NoteColor } from './note-colors';
+import { sortNotes } from './note-sort';
 
 export type NotesStatus = 'loading' | 'ready' | 'error';
 
@@ -25,6 +27,7 @@ export class NotesStore {
   private readonly notesRepository = inject(NoteRepository);
   private readonly notebooks = inject(NotebookRepository);
   private readonly imageGc = inject(ImageGcService);
+  private readonly settings = inject(SettingsStore);
 
   private readonly all = signal<readonly Note[]>([]);
   private readonly state = signal<NotesStatus>('loading');
@@ -32,13 +35,22 @@ export class NotesStore {
   private readonly currentView = signal<NoteView>({ kind: 'active' });
   private loaded = false;
 
-  readonly notes = this.all.asReadonly();
   readonly status = this.state.asReadonly();
   readonly saveFailed = this.failedSave.asReadonly();
   readonly view = this.currentView.asReadonly();
 
-  readonly pinned = computed(() => this.all().filter((note) => note.pinned));
-  readonly unpinned = computed(() => this.all().filter((note) => !note.pinned));
+  /**
+   * Display order is applied here rather than in SQL, so changing the sort order
+   * costs a re-sort and no round trip — and so `titleAsc`, which SQLite cannot
+   * express, is available at all. `note-sort.ts` explains the split. Everything
+   * that mutates the list below therefore stores rows unsorted.
+   */
+  readonly notes = computed(() =>
+    sortNotes(this.all(), this.currentView(), this.settings.sortOrder()),
+  );
+
+  readonly pinned = computed(() => this.notes().filter((note) => note.pinned));
+  readonly unpinned = computed(() => this.notes().filter((note) => !note.pinned));
 
   /**
    * Switches which notes the list holds. The editor keeps writing through it
@@ -95,13 +107,13 @@ export class NotesStore {
     const note = await this.notesRepository.create(
       type === 'checklist' ? { notebookId, type, checklist: [] } : { notebookId, type },
     );
-    this.all.set(sortActiveNotes([note, ...this.all()]));
+    this.all.set([note, ...this.all()]);
     return note;
   }
 
   /**
-   * Persists and replaces in place. Re-sorting here is what lifts a just-edited
-   * note back to the top of the list without a second database round-trip.
+   * Persists and replaces in place. The `notes` computed re-sorts, which is what
+   * lifts a just-edited note back to the top without a second round-trip.
    *
    * Reports whether the write landed instead of rethrowing, so the editor can
    * keep the edit pending and try again. Rethrowing is reserved for the explicit
@@ -136,11 +148,8 @@ export class NotesStore {
    * Pin and colour are the only two M08 actions that go through `replace`: they
    * change no `WHERE` clause in `note-queries.ts`, so the note stays in whatever
    * view it was in. Everything below them can change view membership and so
-   * reloads instead — see the comment on `replace`.
-   *
-   * Safe against the trash's `deleted_at DESC` ordering only because
-   * `noteActionChoices` offers neither action there, so `sortActiveNotes` can
-   * never re-sort a trashed list by the wrong key.
+   * reloads instead — see the comment on `replace`. That holds under a search
+   * view too: neither can change whether a note matches a query.
    */
   async setPinned(id: string, pinned: boolean): Promise<void> {
     this.replace(await this.notesRepository.setPinned(id, pinned));
@@ -200,7 +209,7 @@ export class NotesStore {
    * The one `notebookId` comparison is the *only* view predicate held in
    * TypeScript, deliberately. A general `matchesView()` would be a second
    * encoding of the `WHERE` clauses in `note-queries.ts`, next to the one
-   * `compareActiveNotes` already keeps of their `ORDER BY` — and
+   * `note-sort.ts` already keeps of their `ORDER BY` — and
    * `docs/repositories.md` names that duplication as the layer's standing
    * hazard. Archiving, trashing and labelling therefore reload instead of
    * passing through here.
@@ -209,39 +218,20 @@ export class NotesStore {
     const view = this.currentView();
     const next = this.all().map((note) => (note.id === saved.id ? saved : note));
     this.all.set(
-      sortActiveNotes(
-        view.kind === 'notebook'
-          ? next.filter((note) => note.notebookId === view.notebookId)
-          : next,
-      ),
+      view.kind === 'notebook' ? next.filter((note) => note.notebookId === view.notebookId) : next,
     );
   }
 }
 
-/**
- * The list order from `note-queries.ts` expressed in TypeScript:
- * `pinned DESC, updated_at DESC, id DESC`.
- *
- * Two encodings of one ordering is the standing hazard named in
- * `docs/repositories.md`. `notes.store.spec.ts` cross-checks this against
- * `NoteRepository.list({kind:'active'})` over a shared fixture; if a sort order
- * is ever added, both sides move together or that spec fails.
- */
-export function compareActiveNotes(a: Note, b: Note): number {
-  if (a.pinned !== b.pinned) {
-    return a.pinned ? -1 : 1;
-  }
-  if (a.updatedAt !== b.updatedAt) {
-    return a.updatedAt > b.updatedAt ? -1 : 1;
-  }
-  return a.id > b.id ? -1 : 1;
-}
-
-function sortActiveNotes(notes: readonly Note[]): readonly Note[] {
-  return [...notes].sort(compareActiveNotes);
-}
-
 function sameView(a: NoteView, b: NoteView): boolean {
+  if (a.kind === 'search' || b.kind === 'search') {
+    return (
+      a.kind === 'search' &&
+      b.kind === 'search' &&
+      a.query === b.query &&
+      sameView(a.scope, b.scope)
+    );
+  }
   if (a.kind !== b.kind) {
     return false;
   }

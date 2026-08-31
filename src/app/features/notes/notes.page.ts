@@ -65,7 +65,13 @@ import { NotesStore } from './notes.store';
           >
             <fa-icon [icon]="settings.noteLayout() === 'grid' ? gridIcon : listIcon" />
           </ion-button>
-          <ion-button routerLink="/search" [attr.aria-label]="i18n.t('a11y.searchNotes')">
+          <!-- The notebook or label travels as a query parameter so the search
+               page can offer to narrow to it; /search stays one route. -->
+          <ion-button
+            routerLink="/search"
+            [queryParams]="searchContext()"
+            [attr.aria-label]="i18n.t('a11y.searchNotes')"
+          >
             <fa-icon [icon]="searchIcon" />
           </ion-button>
         </ion-buttons>
@@ -163,6 +169,15 @@ export class NotesPage {
     }
     const labelId = this.labelId();
     return labelId ? (this.labels.find(labelId)?.name ?? '') : this.i18n.t('sidebar.notes');
+  });
+
+  protected readonly searchContext = computed(() => {
+    const notebookId = this.notebookId();
+    if (notebookId) {
+      return { notebookId };
+    }
+    const labelId = this.labelId();
+    return labelId ? { labelId } : {};
   });
 
   protected readonly emptyMessage = computed(() => {

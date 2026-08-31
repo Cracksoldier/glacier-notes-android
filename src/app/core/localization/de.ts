@@ -33,9 +33,12 @@ export const de: Record<TranslationKey, string> = {
 
   'grid.pinned': 'Angeheftet',
   'grid.others': 'Weitere',
+  'grid.noMatches': 'Keine Treffer',
+  'grid.noMatchesHint': 'Versuche einen anderen Suchbegriff.',
 
   'card.emptyNote': 'Leere Notiz',
   'card.more': '+{count} weitere',
+  'card.archived': 'Archiviert',
 
   'notebook.deleteTitle': 'Notizbuch "{name}" löschen?',
   'notebook.containsOne': 'Dieses Notizbuch enthält 1 Notiz.',
@@ -135,7 +138,15 @@ export const de: Record<TranslationKey, string> = {
   'common.rename': 'Umbenennen',
   'common.done': 'Fertig',
 
-  'placeholder.search': 'Volltextsuche über Titel, Inhalte und Checklisten.',
+  'search.placeholder': 'Notizen durchsuchen…',
+  'search.scopeAll': 'Alle',
+  'search.scopeNotebook': 'Dieses Notizbuch',
+  'search.scopeLabel': 'Dieses Label',
+  'search.scopeArchive': 'Archiv',
+  'search.scopeTrash': 'Papierkorb',
+  'search.prompt': 'Durchsuche deine Notizen',
+  'search.promptHint': 'Titel, Notiztext und Checklisteneinträge.',
+
   'placeholder.importExport':
     'Tausche .glacier.json-Archive mit Glacier Notes auf dem Desktop aus.',
 
@@ -154,6 +165,19 @@ export const de: Record<TranslationKey, string> = {
   'settings.moveCheckedToBottomHint':
     'Ändert nur die Anzeige. Die gespeicherte Reihenfolge bleibt unverändert.',
 
+  'settings.notes': 'Notizen',
+  'settings.sortOrder': 'Notizen sortieren nach',
+  'settings.sortUpdatedDesc': 'Zuletzt bearbeitet',
+  'settings.sortCreatedDesc': 'Erstellungsdatum',
+  'settings.sortTitleAsc': 'Titel',
+  'settings.sortOrderHint':
+    'Angeheftete Notizen bleiben oben. Der Papierkorb ist immer nach Datum sortiert.',
+
+  'settings.about': 'Über',
+  'settings.aboutApp': 'Glacier Notes für Android',
+  'settings.aboutVersion': 'Version {version}',
+  'settings.attributionIcons': 'Symbole von Font Awesome Free, lizenziert unter CC BY 4.0.',
+
   'settings.trash': 'Papierkorb',
   'settings.trashAutoPurge': 'Notizen im Papierkorb löschen nach',
   'settings.trashAutoPurgeNever': 'Nie',
@@ -166,6 +190,7 @@ export const de: Record<TranslationKey, string> = {
 
   'a11y.openMenu': 'Navigationsmenü öffnen',
   'a11y.searchNotes': 'Notizen durchsuchen',
+  'a11y.searchScope': 'Suchbereich',
   'a11y.newNote': 'Neue Notiz',
   'a11y.newChecklist': 'Neue Checkliste',
   'a11y.checklistItems': 'Checklisteneinträge',

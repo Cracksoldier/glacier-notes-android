@@ -126,9 +126,19 @@ optional: without it, two notes sharing an `updated_at` can land in the page in
 one execution and outside it in the next, and the assembled note comes back with
 another note's checklist.
 
-If a future milestone adds a sort order — M11's alternatives, or search
-relevance — it must append a unique tiebreaker. `note-ordering.spec.ts` is the
-guard.
+Any ordering added here must append a unique tiebreaker.
+`note-ordering.spec.ts` is the guard.
+
+**M11 narrowed what this order is *for*.** It is a total order so that the four
+statements agree on a page — it is no longer the order the user sees. The three
+sort orders M11 added include `titleAsc`, which SQLite cannot express (its
+default collation compares bytes and puts `Zebra` before `ähnlich`), so display
+order moved to a comparator in `features/notes/note-sort.ts` that `NotesStore`
+applies to the loaded array. The consequence a future caller will otherwise be
+surprised by: **a `NoteWindow` pages in SQL order.** Windowing plus a non-default
+sort order would therefore show a window of the wrong notes. No caller passes a
+window today, and one that wants to must move its sort into SQL first.
+`docs/search-and-sorting.md` §4 has the reasoning.
 
 The rule is not confined to the windowed query. `LabelRepository.list` sorts by
 name alone, and label names are explicitly non-unique, so two same-named labels
@@ -138,9 +148,9 @@ tiebreaker there. `LabelsStore` shares that comparator by importing
 drifted once.
 
 `notes.id` is `TEXT` and not a rowid alias, so the tiebreaker costs an
-index-ordered scan rather than being free. Accepted for v1; whether to append
-`, id` to `idx_notes_active` and `idx_notes_notebook` in a migration 002 is
-M11's call.
+index-ordered scan rather than being free. M11 was asked to decide whether to
+append `, id` to `idx_notes_active` and `idx_notes_notebook`, and **decided
+against it** on measurements — `docs/search-and-sorting.md` §6.
 
 ### Views and their orders
 
@@ -151,6 +161,8 @@ M11's call.
 | `notebook` | active notes in one notebook | same |
 | `label` | active notes carrying one label | same |
 | `trashed` | trashed, any notebook | `pinned DESC, deleted_at DESC, id DESC` |
+| `all` | not trashed, archived or not | `pinned DESC, archived ASC, updated_at DESC, id DESC` |
+| `search` | its scope's rows, narrowed by a query | its scope's order |
 
 `notebook` and `label` are **active-only**, which is not obvious: both desktop
 grids read `active()` (`note-grid.ts:42,44`), so an archived note disappears from
@@ -158,6 +170,11 @@ its notebook's list rather than staying with a badge.
 
 Pinned-above-unpinned holds in *every* view, including trash, because the desktop
 partitions unconditionally (`note-grid.ts:52-53`) rather than per view.
+
+`all` is reachable only through a search, and its `archived ASC` key is what
+reproduces the desktop's `[...active(), ...archived()]` concatenation: an active
+block, then an archived one. Trash is not part of it — the desktop never searches
+deleted notes.
 
 ### The trash order is a deliberate deviation
 

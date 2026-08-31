@@ -31,10 +31,10 @@ export interface NoteActionChoice {
  * A trashed note offers only restore and delete-forever.
  *
  * Everything else is withheld rather than offered and then failed — the M07
- * precedent. It also protects an invariant in `NotesStore`: `sortActiveNotes`
- * encodes the active ordering, not the trash's `deleted_at DESC`, so pinning or
- * recolouring from the trash view would re-sort that list wrongly. There is no
- * such action to reach.
+ * precedent. It also protects an invariant in `NotesStore`: `compareNotes`
+ * orders the trash by `deletedAt` and ignores the sort setting there, so pinning
+ * or recolouring from the trash view would re-sort that list wrongly. There is
+ * no such action to reach.
  */
 export function noteActionChoices(note: Note, view: NoteView['kind']): readonly NoteActionChoice[] {
   if (view === 'trashed') {
@@ -55,6 +55,24 @@ export function noteActionChoices(note: Note, view: NoteView['kind']): readonly 
       : ({ action: 'archive', labelKey: 'note.archive' } as const),
     { action: 'trash', labelKey: 'note.moveToTrash', destructive: true },
   ];
+}
+
+/**
+ * Which set of actions a note in this view should be offered.
+ *
+ * Every view except a search holds one kind of note, so the view alone decides.
+ * A search does not: its `all` scope mixes active notes with archived ones, and
+ * a search narrowed to the trash returns trashed ones — so there the note
+ * decides, and the scope is only what let it into the list.
+ */
+export function effectiveViewKind(note: Note, view: NoteView): NoteView['kind'] {
+  if (view.kind !== 'search') {
+    return view.kind;
+  }
+  if (note.deletedAt) {
+    return 'trashed';
+  }
+  return note.archived ? 'archived' : 'active';
 }
 
 export function noteActionFor(

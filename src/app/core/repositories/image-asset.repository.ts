@@ -54,7 +54,7 @@ export class ImageAssetRepository {
    * `ESCAPE`, since a UUID contains neither `%` nor `_`.
    *
    * This predicate and `referencedImageIds()` must move together, the same way
-   * `compareActiveNotes` and the `ORDER BY` in `note-queries.ts` do.
+   * `note-sort.ts` and the `ORDER BY` in `note-queries.ts` do.
    */
   unreferenced(ids: readonly string[]): Promise<string[]> {
     if (ids.length === 0) {

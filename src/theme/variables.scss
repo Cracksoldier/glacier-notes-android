@@ -65,6 +65,10 @@
   // text variant is the accent itself. Only the light theme needs a darker one.
   --glacier-accent-text: #4cc9f0;
 
+  // Ink for a search highlight, which sits on --color-accent rather than on a
+  // background colour. Here it is --color-bg, exactly as desktop has it.
+  --glacier-mark-ink: #0d1b2a;
+
   @include color-steps(#0d1b2a, #e0e6ed);
 }
 
@@ -111,6 +115,12 @@
   // --ion-color-primary-shade (#0b7db6) is not enough — it reaches 4.22:1 on
   // #f4f7fa, so it would pass on a card and fail on the page behind it.
   --glacier-accent-text: #0b77ad;
+
+  // Desktop draws a highlight as --color-bg on --color-accent, which in this
+  // theme is #f4f7fa on #0d8ecf: 3.37:1, below AA for the small text a card
+  // preview renders. The dark theme's ink reaches 4.79:1 on the same accent, so
+  // both themes take it and the highlight stays dark-on-accent throughout.
+  --glacier-mark-ink: #0d1b2a;
 
   @include color-steps(#f4f7fa, #1b263b);
 }

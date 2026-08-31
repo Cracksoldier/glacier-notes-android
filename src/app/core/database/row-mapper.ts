@@ -4,6 +4,7 @@ import type { Label } from '../models/label';
 import type { Note } from '../models/note';
 import type { Notebook } from '../models/notebook';
 import type {
+  AuthoredNoteRow,
   ChecklistItemRow,
   ImageAssetRow,
   LabelRow,
@@ -126,7 +127,7 @@ export function noteFromRow(row: NoteRow, joins: NoteJoins): Note {
   };
 }
 
-export function noteToRow(note: Note): NoteRow {
+export function noteToRow(note: Note): AuthoredNoteRow {
   return {
     id: note.id,
     notebook_id: note.notebookId,

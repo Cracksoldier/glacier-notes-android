@@ -1,5 +1,6 @@
 import type { DatabaseAdapter } from '../database/database-adapter';
 import { checklistItemToRow, noteToRow } from '../database/row-mapper';
+import { refreshSearchText } from '../database/search-text';
 import { type SqlValue, toSqlBoolean } from '../database/sql-value';
 import type { ChecklistItem } from '../models/checklist-item';
 import { referencedImageIds } from '../models/image-asset';
@@ -45,6 +46,11 @@ export type NoteUpdatePatch = Partial<
   >
 >;
 
+/**
+ * `search_text` is deliberately absent: it is derived from the checklist rows
+ * too, which do not exist yet at this point in the insert, so the column takes
+ * its `''` default and `refreshSearchText` fills it in once they do.
+ */
 const NOTE_COLUMNS =
   'id, notebook_id, type, title, content, color, pinned, archived, deleted_at, created_at, updated_at';
 
@@ -69,6 +75,7 @@ export async function insertNote(adapter: DatabaseAdapter, note: Note): Promise<
   await replaceChecklist(adapter, note.id, note.checklist ?? []);
   await replaceImages(adapter, note.id, note.imageIds);
   await replaceLabels(adapter, note.id, note.labels);
+  await refreshSearchText(adapter, note.id);
 }
 
 /**
@@ -127,6 +134,13 @@ export async function applyNotePatch(
   if (patch.labels !== undefined) {
     await replaceLabels(adapter, id, patch.labels);
   }
+  // Unconditional, and last: the helper re-reads the note and its items, so it
+  // has to run after `replaceChecklist`/`deleteChecklist`. Not gated on "did
+  // title, content, type or checklist change" — that condition is exactly the
+  // kind that drifts out of step with the patch shape and leaves stale text
+  // behind with nothing failing, and it saves two statements on a write that
+  // already runs several.
+  await refreshSearchText(adapter, id);
 }
 
 export async function trashNote(

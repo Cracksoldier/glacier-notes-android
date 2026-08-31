@@ -122,8 +122,13 @@ stays predictable.
 
 Font Awesome Free icons are licensed **CC BY 4.0**
 (<https://fontawesome.com/license/free>). The obligation is to credit Font
-Awesome. M11 surfaces this in the Settings screen's about section; until then
-this file is the record.
+Awesome, and it is **discharged**: M11 put the credit in the Settings screen's
+About section, as `settings.attributionIcons` in both languages.
+
+It has to stay in the app rather than only in this file, so
+`settings.page.spec.ts` asserts the rendered string. Removing the About section
+without moving the credit somewhere else that ships would break the licence, and
+that spec is what says so out loud.
 
 ## Brand mark
 

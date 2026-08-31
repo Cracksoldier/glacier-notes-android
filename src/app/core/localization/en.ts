@@ -29,6 +29,8 @@ export const en = {
   'grid.trashEmptyHint': 'Deleted notes appear here.',
   'grid.pinned': 'Pinned',
   'grid.others': 'Others',
+  'grid.noMatches': 'No matches',
+  'grid.noMatchesHint': 'Try a different search term.',
 
   // android: the desktop has no load-failure state at all — it renders an empty
   // list and says nothing. On a phone the database is the only copy, so a
@@ -40,6 +42,7 @@ export const en = {
 
   'card.emptyNote': 'Empty note',
   'card.more': '+{count} more',
+  'card.archived': 'Archived',
 
   'notebook.deleteTitle': 'Delete notebook "{name}"?',
   'notebook.containsOne': 'This notebook contains 1 note.',
@@ -149,8 +152,19 @@ export const en = {
   'common.rename': 'Rename',
   'common.done': 'Done',
 
+  // Desktop searches from a field in its header, over one scope toggle. A phone
+  // has no room for either beside the note list, so search is a page and the
+  // scope is a chip row on it; these strings are this app's own.
+  'search.placeholder': 'Search notes…',
+  'search.scopeAll': 'All',
+  'search.scopeNotebook': 'This notebook',
+  'search.scopeLabel': 'This label',
+  'search.scopeArchive': 'Archive',
+  'search.scopeTrash': 'Trash',
+  'search.prompt': 'Search your notes',
+  'search.promptHint': 'Titles, note text and checklist items.',
+
   // android: placeholder copy for destinations the desktop reaches differently.
-  'placeholder.search': 'Full-text search over titles, bodies and checklists.',
   'placeholder.importExport': 'Exchange .glacier.json archives with Glacier Notes on the desktop.',
 
   'settings.title': 'Settings',
@@ -170,6 +184,22 @@ export const en = {
   'settings.moveCheckedToBottomHint':
     'Changes how items are shown. Their saved order stays as it is.',
 
+  // android: the desktop stores sortOrder but offers only `updatedDesc` and no
+  // way to change it (docs/desktop-audit.md §6). The wording is this app's own.
+  'settings.notes': 'Notes',
+  'settings.sortOrder': 'Sort notes by',
+  'settings.sortUpdatedDesc': 'Last edited',
+  'settings.sortCreatedDesc': 'Date created',
+  'settings.sortTitleAsc': 'Title',
+  'settings.sortOrderHint': 'Pinned notes stay at the top. The trash is always newest first.',
+
+  'settings.about': 'About',
+  'settings.aboutApp': 'Glacier Notes for Android',
+  'settings.aboutVersion': 'Version {version}',
+  // The Font Awesome CC BY 4.0 licence requires the credit to be visible in the
+  // app itself; docs/design-system.md is the record of the obligation.
+  'settings.attributionIcons': 'Icons by Font Awesome Free, licensed CC BY 4.0.',
+
   // android: the desktop keeps trashAutoPurgeDays in its settings file with no
   // way to change it (docs/desktop-audit.md §6, §11.7).
   'settings.trash': 'Trash',
@@ -187,6 +217,7 @@ export const en = {
   // android: the desktop is pointer-driven and has no equivalent labels.
   'a11y.openMenu': 'Open navigation menu',
   'a11y.searchNotes': 'Search notes',
+  'a11y.searchScope': 'Where to search',
   'a11y.newNote': 'New note',
   'a11y.newChecklist': 'New checklist',
   'a11y.checklistItems': 'Checklist items',

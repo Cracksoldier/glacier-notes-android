@@ -9,6 +9,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test --configuration ci",
     "test:watch": "ng test",
+    "test:bench": "ng test --configuration bench",
     "lint": "ng lint",
     "format": "biome format --write .",
     "format:check": "biome format .",

@@ -5,14 +5,13 @@ import { marked } from 'marked';
 
 import { IMAGE_FILE_STORE } from '../images/image-file-store';
 import { resolveImageSources } from './glacier-image-src';
+import { highlightHtml } from './highlight';
 
 /**
  * Renders note bodies to HTML. Ported from the desktop's
  * src/app/core/markdown/markdown.service.ts, including its parser options and
  * sanitizer configuration, so the same document produces the same output in
  * both apps -- which matters once M12 round-trips `.glacier.json` between them.
- *
- * Not ported: the search-highlight argument (M11), which would be dead code here.
  */
 
 const PREVIEW_SOURCE_LIMIT = 600;
@@ -59,12 +58,21 @@ export class MarkdownService {
     );
   }
 
-  /** Card previews. Truncates the *source* first, so a long note costs one short parse. */
-  renderPreview(markdown: string): SafeHtml {
-    return this.render(
+  /**
+   * Card previews. Truncates the *source* first, so a long note costs one short
+   * parse.
+   *
+   * `highlight` wraps the search query's matches in `<mark>`. It is applied
+   * after sanitizing, deliberately — see `highlight.ts`.
+   */
+  renderPreview(markdown: string, highlight?: string): SafeHtml {
+    const source =
       markdown.length > PREVIEW_SOURCE_LIMIT
         ? `${markdown.slice(0, PREVIEW_SOURCE_LIMIT)}…`
-        : markdown,
+        : markdown;
+    const html = resolveImageSources(this.renderToHtml(source), (id) => this.images.url(id));
+    return this.sanitizer.bypassSecurityTrustHtml(
+      highlight ? highlightHtml(html, highlight) : html,
     );
   }
 
@@ -74,8 +82,11 @@ export class MarkdownService {
    * has a checkbox next to it. Images are forbidden outright rather than left
    * to the `afterSanitizeAttributes` hook: an item is not a place for one.
    */
-  renderInline(markdown: string): SafeHtml {
-    return this.sanitizer.bypassSecurityTrustHtml(this.renderInlineToHtml(markdown));
+  renderInline(markdown: string, highlight?: string): SafeHtml {
+    const html = this.renderInlineToHtml(markdown);
+    return this.sanitizer.bypassSecurityTrustHtml(
+      highlight ? highlightHtml(html, highlight) : html,
+    );
   }
 
   /** Exposed for the same reason as `renderToHtml`. */

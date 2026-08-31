@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { LATEST_VERSION } from './migrations';
 import { runMigrations } from './migrations/migration-runner';
 import { SqlJsAdapter } from './sqljs.adapter';
 
@@ -13,7 +14,7 @@ describe('SqlJsAdapter', () => {
     await runMigrations(adapter);
 
     expect(await adapter.query('SELECT name FROM notebooks')).toEqual([{ name: 'Notes' }]);
-    expect(await adapter.query('PRAGMA user_version')).toEqual([{ user_version: 1 }]);
+    expect(await adapter.query('PRAGMA user_version')).toEqual([{ user_version: LATEST_VERSION }]);
   });
 
   it('holds nothing across instances, so it cannot be mistaken for storage', async () => {

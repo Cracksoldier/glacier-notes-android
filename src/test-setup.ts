@@ -1,6 +1,7 @@
 // Polyfills for running unit tests under jsdom (the default Vitest environment).
 // Ionic components such as ion-menu and ion-split-pane query `window.matchMedia`,
-// which jsdom does not implement.
+// which jsdom does not implement, and `NoteListComponent` grows its render
+// window from an `IntersectionObserver`, which jsdom does not implement either.
 
 type Listener = (event: MediaQueryListEvent) => void;
 
@@ -55,3 +56,65 @@ window.matchMedia = (query: string): MediaQueryList => {
     dispatchEvent: () => false,
   } as MediaQueryList;
 };
+
+type IntersectionCallback = (entries: IntersectionObserverEntry[]) => void;
+
+const intersectionObservers = new Map<IntersectionCallback, Set<Element>>();
+
+/**
+ * Reports every currently observed element as having come into view.
+ *
+ * jsdom has no layout, so nothing here can decide on its own whether an element
+ * intersects; a spec that wants a list to grow says so. Returns how many
+ * elements were reported, which is the difference between "the sentinel is not
+ * being observed" and "it was observed and the component ignored it".
+ */
+export function triggerIntersection(): number {
+  let reported = 0;
+  for (const [callback, elements] of intersectionObservers) {
+    if (elements.size === 0) {
+      continue;
+    }
+    reported += elements.size;
+    callback(
+      [...elements].map(
+        (target) => ({ target, isIntersecting: true }) as unknown as IntersectionObserverEntry,
+      ),
+    );
+  }
+  return reported;
+}
+
+export function resetIntersectionObservers(): void {
+  intersectionObservers.clear();
+}
+
+class TestIntersectionObserver implements IntersectionObserver {
+  readonly root: Element | null = null;
+  readonly rootMargin = '0px';
+  readonly scrollMargin = '0px';
+  readonly thresholds: readonly number[] = [0];
+
+  constructor(private readonly callback: IntersectionCallback) {
+    intersectionObservers.set(this.callback, new Set());
+  }
+
+  observe(target: Element): void {
+    intersectionObservers.get(this.callback)?.add(target);
+  }
+
+  unobserve(target: Element): void {
+    intersectionObservers.get(this.callback)?.delete(target);
+  }
+
+  disconnect(): void {
+    intersectionObservers.delete(this.callback);
+  }
+
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+}
+
+window.IntersectionObserver = TestIntersectionObserver as unknown as typeof IntersectionObserver;
+globalThis.IntersectionObserver = window.IntersectionObserver;

@@ -2,9 +2,16 @@ export type ThemeMode = 'dark' | 'light' | 'system';
 export type ResolvedTheme = 'dark' | 'light';
 export type LanguageCode = 'en' | 'de';
 export type NoteLayout = 'list' | 'grid';
-// The desktop orders notes by updatedAt descending and offers no alternative
-// (electron/storage/note-repo.ts). M11 defines the desktop-compatible set.
-export type NoteSortOrder = 'updatedDesc';
+/**
+ * The desktop orders notes by `updatedAt` descending and offers no alternative
+ * (`electron/storage/note-repo.ts`), so `updatedDesc` is the compatible default
+ * and the other two are additions. They are presentation only — nothing here
+ * reaches `.glacier.json`, so an export is unaffected by the choice.
+ *
+ * Pinned notes stay a group above the rest under every option; the comparators
+ * live in `features/notes/note-sort.ts`.
+ */
+export type NoteSortOrder = 'updatedDesc' | 'createdDesc' | 'titleAsc';
 
 export interface Settings {
   themeMode: ThemeMode;
@@ -24,7 +31,11 @@ const MAX_TRASH_AUTO_PURGE_DAYS = 3650;
 const THEME_MODES: readonly ThemeMode[] = ['dark', 'light', 'system'];
 const LANGUAGES: readonly LanguageCode[] = ['en', 'de'];
 const NOTE_LAYOUTS: readonly NoteLayout[] = ['list', 'grid'];
-const NOTE_SORT_ORDERS: readonly NoteSortOrder[] = ['updatedDesc'];
+export const NOTE_SORT_ORDERS: readonly NoteSortOrder[] = [
+  'updatedDesc',
+  'createdDesc',
+  'titleAsc',
+];
 
 /** Mirrors the desktop's defaultSettings (electron/storage/models.ts). */
 export function defaultSettings(deviceLocale: string): Settings {

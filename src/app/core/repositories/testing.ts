@@ -5,10 +5,14 @@ import { runMigrations } from '../database/migrations/migration-runner';
 import { NodeSqliteAdapter } from '../database/node-sqlite.adapter';
 import { IMAGE_FILE_STORE } from '../images/image-file-store';
 import { MemoryImageFileStore } from '../images/memory-image-file-store';
+import { newId } from '../models/entity-id';
+import type { Note } from '../models/note';
 import { ImageAssetRepository } from './image-asset.repository';
 import { LabelRepository } from './label.repository';
+import { insertNote } from './note-writes';
 import { NoteRepository } from './note.repository';
 import { NotebookRepository } from './notebook.repository';
+import { RepositoryContext } from './repository-context';
 
 /**
  * The repositories under test are the real ones, over a real SQLite engine held
@@ -56,5 +60,89 @@ export async function createTestRepositories(): Promise<TestRepositories> {
     images: TestBed.inject(ImageAssetRepository),
     files,
     defaultNotebookId: await notebooks.getDefaultId(),
+  };
+}
+
+export interface SeedNotesOptions {
+  /** Defaults to the notebook migration 001 seeds. */
+  notebookId?: string;
+  /** Every nth note is archived, every (n × 2)th pinned, every (n / 2)th a checklist. */
+  every?: number;
+}
+
+/**
+ * A word per note, cycled by index, so a benchmark has something to search for
+ * that matches a known fraction of the collection rather than all of it or none.
+ * The two German ones are here because the folding they exercise is the reason
+ * `search_text` exists at all.
+ */
+const SEED_WORDS = [
+  'glacier',
+  'invoice',
+  'einkaufsliste',
+  'roadmap',
+  'straße',
+  'meeting',
+  'recipe',
+  'travel',
+];
+
+const SEED_EPOCH_MS = Date.parse('2026-01-01T00:00:00.000Z');
+
+/**
+ * Thousands of notes in one transaction, by composing `insertNote` rather than
+ * calling `NoteRepository.create` in a loop: each call would queue its own
+ * `write()`, and at this size the queue would spend longer than
+ * `QUEUE_STALL_TIMEOUT_MS` getting through them. It is the same rule M12's
+ * import follows (`docs/repositories.md`).
+ *
+ * Deterministic in every field, so a re-run measures the same collection.
+ */
+export async function seedNotes(
+  repositories: TestRepositories,
+  count: number,
+  options: SeedNotesOptions = {},
+): Promise<void> {
+  const notebookId = options.notebookId ?? repositories.defaultNotebookId;
+  const every = options.every ?? 10;
+  const context = TestBed.inject(RepositoryContext);
+
+  await context.write('seedNotes', async (adapter) => {
+    for (let index = 0; index < count; index++) {
+      await insertNote(adapter, seedNote(index, notebookId, every));
+    }
+  });
+}
+
+function seedNote(index: number, notebookId: string, every: number): Note {
+  const word = SEED_WORDS[index % SEED_WORDS.length];
+  // Descending in time, so the seeded order and the `updatedAt` order disagree
+  // and a sort benchmark cannot accidentally measure an already-sorted array.
+  const createdAt = new Date(SEED_EPOCH_MS - index * 60_000).toISOString();
+  const updatedAt = new Date(SEED_EPOCH_MS - ((index * 7919) % 100_000) * 60_000).toISOString();
+  const checklist = index % Math.max(1, Math.floor(every / 2)) === 0;
+
+  return {
+    id: newId(),
+    notebookId,
+    type: checklist ? 'checklist' : 'text',
+    title: `Seeded note ${index} ${word}`,
+    content: checklist ? '' : `# ${word}\n\nParagraph ${index} mentioning ${word} once more.`,
+    ...(checklist
+      ? {
+          checklist: [0, 1, 2].map((position) => ({
+            id: newId(),
+            text: `Item ${position} of note ${index}: ${word}`,
+            checked: position === 0,
+            sortOrder: position,
+          })),
+        }
+      : {}),
+    imageIds: [],
+    pinned: index % (every * 2) === 0,
+    archived: index % every === 0,
+    labels: [],
+    createdAt,
+    updatedAt,
   };
 }

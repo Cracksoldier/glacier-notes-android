@@ -95,7 +95,9 @@ describe('a fresh database', () => {
       'SELECT version, name FROM schema_migrations',
     );
 
-    expect(rows).toEqual([{ version: 1, name: 'initial-schema' }]);
+    expect(rows).toEqual(
+      MIGRATIONS.map((migration) => ({ version: migration.version, name: migration.name })),
+    );
     expect(await userVersion(adapter)).toBe(LATEST_VERSION);
   });
 

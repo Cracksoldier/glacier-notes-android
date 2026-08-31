@@ -28,8 +28,12 @@ describe('NoteCardComponent', () => {
     await repositories.adapter.close();
   });
 
-  function render(note: Partial<Note> = {}): ComponentFixture<NoteCardComponent> {
+  function render(
+    note: Partial<Note> = {},
+    searchQuery: string | null = null,
+  ): ComponentFixture<NoteCardComponent> {
     const fixture = TestBed.createComponent(NoteCardComponent);
+    fixture.componentRef.setInput('searchQuery', searchQuery);
     fixture.componentRef.setInput('note', {
       id: 'ffffffff-0000-0000-0000-000000000000',
       notebookId: repositories.defaultNotebookId,
@@ -203,6 +207,58 @@ describe('NoteCardComponent', () => {
       }).nativeElement;
 
       expect(host.querySelector('.note-card__blank')).toBeNull();
+    });
+  });
+
+  describe('under a search', () => {
+    it('marks the query in the title, the preview and a checklist row', () => {
+      const body: HTMLElement = render(
+        { title: 'Einkaufsliste', content: 'auch **kaufen**' },
+        'kauf',
+      ).nativeElement;
+      const list: HTMLElement = render(
+        {
+          type: 'checklist',
+          checklist: [{ id: 'a', text: 'einkaufen gehen', checked: false, sortOrder: 0 }],
+        },
+        'kauf',
+      ).nativeElement;
+
+      const title = body.querySelector('.note-card__title');
+      expect(title?.querySelector('mark')?.textContent).toBe('kauf');
+      expect(title?.textContent).toBe('Einkaufsliste');
+      expect(body.querySelector('.note-card__preview')?.innerHTML).toContain('<mark>kauf</mark>');
+      expect(list.querySelector('.note-card__item-text')?.innerHTML).toContain('<mark>kauf</mark>');
+    });
+
+    it('marks nothing when no query is set', () => {
+      const host: HTMLElement = render({ title: 'Einkaufsliste', content: 'kaufen' }).nativeElement;
+
+      expect(host.querySelector('mark')).toBeNull();
+    });
+
+    // The `all` scope is the only view that mixes the two, so the badge only has
+    // something to say there.
+    it('badges an archived hit, and only while searching', () => {
+      expect(
+        (render({ archived: true }, 'x').nativeElement as HTMLElement).querySelector(
+          '.note-card__archived',
+        ),
+      ).not.toBeNull();
+      expect(
+        (render({ archived: true }).nativeElement as HTMLElement).querySelector(
+          '.note-card__archived',
+        ),
+      ).toBeNull();
+      expect(
+        (render({}, 'x').nativeElement as HTMLElement).querySelector('.note-card__archived'),
+      ).toBeNull();
+    });
+
+    it('says so in the accessible name too, since role=button hides the badge', () => {
+      const host: HTMLElement = render({ title: 'Note', archived: true }, 'x').nativeElement;
+
+      expect(host.getAttribute('aria-label')).toBe('Note. Archived');
     });
   });
 

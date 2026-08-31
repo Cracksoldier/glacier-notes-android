@@ -11,13 +11,14 @@ import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 
 import { IMAGE_FILE_STORE } from '../../core/images/image-file-store';
 import { I18nService } from '../../core/localization/i18n.service';
+import { splitText } from '../../core/markdown/highlight';
 import { stripImageReferences } from '../../core/markdown/markdown-edit';
 import { MarkdownService } from '../../core/markdown/markdown.service';
 import { referencedImageIds } from '../../core/models/image-asset';
 import type { Note } from '../../core/models/note';
 import { SettingsStore } from '../../core/preferences/settings.store';
 import { LabelsStore } from '../labels/labels.store';
-import { faThumbtack } from '../../shared/utilities/glacier-icons';
+import { faBoxArchive, faThumbtack } from '../../shared/utilities/glacier-icons';
 import { displayOrder } from './checklist-model';
 import { LongPressTracker } from './long-press';
 import { noteColorVar } from './note-colors';
@@ -53,8 +54,15 @@ const CARD_IMAGE_LIMIT = 3;
         <fa-icon class="note-card__pin" [icon]="pinIcon" />
       }
 
+      @if (searchQuery() && note().archived) {
+        <span class="note-card__archived">
+          <fa-icon [icon]="archiveIcon" />
+          {{ i18n.t('card.archived') }}
+        </span>
+      }
+
       @if (note().title) {
-        <h3 class="note-card__title">{{ note().title }}</h3>
+        <h3 class="note-card__title">@for (segment of titleSegments(); track $index) {@if (segment.match) {<mark>{{ segment.text }}</mark>} @else {{{ segment.text }}}}</h3>
       }
 
       @if (checklist().length) {
@@ -78,7 +86,17 @@ const CARD_IMAGE_LIMIT = 3;
       @if (thumbnails().length) {
         <ul class="note-card__images" [attr.aria-label]="i18n.t('a11y.noteImages')">
           @for (url of thumbnails(); track url) {
-            <li><img class="note-card__thumb" [src]="url" alt="" /></li>
+            <li>
+              <!-- A card renders the full-resolution file into a 56px box, so a
+                   long list would otherwise decode every one of them on mount. -->
+              <img
+                class="note-card__thumb"
+                [src]="url"
+                alt=""
+                loading="lazy"
+                decoding="async"
+              />
+            </li>
           }
         </ul>
       }
@@ -127,6 +145,22 @@ const CARD_IMAGE_LIMIT = 3;
       right: 12px;
       font-size: 12px;
       color: var(--color-text-muted);
+    }
+
+    // The desktop's badge (note-card.scss), shown only while searching, since
+    // that is the only view where an archived note appears beside active ones.
+    .note-card__archived {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      align-self: flex-start;
+      margin-bottom: 6px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background-color: var(--color-surface-elevated);
+      color: var(--color-text-muted);
+      font-size: 11px;
+      font-weight: 600;
     }
 
     .note-card__title {
@@ -228,15 +262,34 @@ export class NoteCardComponent implements OnDestroy {
 
   readonly note = input.required<Note>();
 
+  /**
+   * The query whose matches the card marks. Also what tells the card it is being
+   * shown in a search result, which is the only view that mixes archived notes in
+   * with active ones and so the only one where the badge means anything.
+   */
+  readonly searchQuery = input<string | null>(null);
+
   readonly open = output<void>();
   readonly longPress = output<void>();
 
   readonly pinIcon = faThumbtack;
+  readonly archiveIcon = faBoxArchive;
 
   private readonly tracker = new LongPressTracker({ onLongPress: () => this.longPress.emit() });
 
   protected readonly previewSource = computed(() => stripImageReferences(this.note().content));
-  protected readonly preview = computed(() => this.markdown.renderPreview(this.previewSource()));
+  protected readonly preview = computed(() =>
+    this.markdown.renderPreview(this.previewSource(), this.searchQuery() ?? undefined),
+  );
+
+  /**
+   * The title is plain text, so it is marked by segmentation rather than by
+   * `highlightHtml`: there is no markup here to walk, and rendering the segments
+   * keeps Angular's own escaping in the path.
+   */
+  protected readonly titleSegments = computed(() =>
+    splitText(this.note().title, this.searchQuery() ?? ''),
+  );
 
   /**
    * Drawn from `referencedImageIds`, not `imageIds`, so an imported note whose
@@ -260,7 +313,7 @@ export class NoteCardComponent implements OnDestroy {
       .map((item) => ({
         id: item.id,
         checked: item.checked,
-        html: this.markdown.renderInline(item.text),
+        html: this.markdown.renderInline(item.text, this.searchQuery() ?? undefined),
       })),
   );
 
@@ -289,6 +342,9 @@ export class NoteCardComponent implements OnDestroy {
     const parts = [this.headline() || this.i18n.t('card.emptyNote')];
     if (note.pinned) {
       parts.push(this.i18n.t('a11y.notePinned'));
+    }
+    if (this.searchQuery() && note.archived) {
+      parts.push(this.i18n.t('card.archived'));
     }
     const names = this.labelNames();
     if (names.length) {

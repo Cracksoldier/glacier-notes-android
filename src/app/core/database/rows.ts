@@ -49,7 +49,20 @@ export type NoteRow = {
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * Derived, never authored: the case-folded haystack M11 searches, maintained
+   * by `refreshSearchText`. Declared because `SELECT n.*` returns it; it has no
+   * domain counterpart and `noteFromRow` deliberately drops it.
+   */
+  search_text: string;
 };
+
+/**
+ * A note row as the domain can produce one. `search_text` is derived from the
+ * note *and its checklist rows*, so a `Note` alone cannot supply it; the insert
+ * names its columns and `refreshSearchText` fills it in afterwards.
+ */
+export type AuthoredNoteRow = Omit<NoteRow, 'search_text'>;
 
 export type NoteLabelRow = {
   note_id: string;

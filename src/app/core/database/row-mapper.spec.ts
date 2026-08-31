@@ -28,6 +28,7 @@ function noteRow(overrides: Partial<NoteRow> = {}): NoteRow {
     deleted_at: null,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-02T00:00:00.000Z',
+    search_text: 'title\nbody',
     ...overrides,
   };
 }
@@ -151,7 +152,7 @@ describe('key order', () => {
 });
 
 describe('round-tripping', () => {
-  it('preserves every column through domain and back', () => {
+  it('preserves every authored column through domain and back', () => {
     const original = noteRow({
       type: 'checklist',
       color: 'teal',
@@ -159,8 +160,17 @@ describe('round-tripping', () => {
       archived: 1,
       deleted_at: '2026-02-01T00:00:00.000Z',
     });
+    const { search_text, ...authored } = original;
 
-    expect(noteToRow(noteFromRow(original, NO_JOINS))).toEqual(original);
+    expect(noteToRow(noteFromRow(original, NO_JOINS))).toEqual(authored);
+  });
+
+  it('drops search_text rather than leaking the derived column into the domain', () => {
+    const note = noteFromRow(noteRow({ search_text: 'derived' }), NO_JOINS);
+
+    expect('search_text' in note).toBe(false);
+    expect('searchText' in note).toBe(false);
+    expect(Object.values(note)).not.toContain('derived');
   });
 
   it('maps 0/1 back to booleans rather than truthy numbers', () => {
