@@ -147,8 +147,21 @@ export const de: Record<TranslationKey, string> = {
   'search.prompt': 'Durchsuche deine Notizen',
   'search.promptHint': 'Titel, Notiztext und Checklisteneinträge.',
 
-  'placeholder.importExport':
-    'Tausche .glacier.json-Archive mit Glacier Notes auf dem Desktop aus.',
+  'importExport.exportHeading': 'Export',
+  'importExport.exportHint':
+    'Schreibt ein .glacier.json-Archiv mit allen Notizen, Notizbüchern, Labels und Bildern. Glacier Notes auf dem Desktop kann es importieren.',
+  'importExport.exportAction': 'Alle Notizen exportieren',
+  'importExport.exporting': 'Wird exportiert…',
+  'importExport.exportDone': '{fileName} gespeichert ({size}).',
+  'importExport.exportCounts':
+    '{notebooks} Notizbücher · {notes} Notizen · {labels} Labels · {images} Bilder',
+  'importExport.exportLocation': 'Liegt im privaten Ordner dieser App auf dem Gerät.',
+  'importExport.errorMissingImages':
+    'Es wurde nichts exportiert: {count} angehängte Bilder fehlen auf diesem Gerät. Die Desktop-App würde eine Datei mit fehlenden Bildern ablehnen.',
+  'importExport.errorInvalid':
+    'Es wurde nichts exportiert: Das Archiv hat eine interne Prüfung nicht bestanden.',
+  'importExport.errorWrite':
+    'Der Export konnte nicht geschrieben werden. Gib Speicherplatz frei und versuche es erneut.',
 
   'settings.title': 'Einstellungen',
   'settings.appearance': 'Darstellung',

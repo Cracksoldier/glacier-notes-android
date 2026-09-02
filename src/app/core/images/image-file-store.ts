@@ -22,6 +22,13 @@ export interface ImageFileStore {
    */
   write(id: string, base64: string, mimeType: string): Promise<void>;
 
+  /**
+   * The bytes back out as bare base64 — no `data:` prefix, so it drops straight
+   * into an export envelope's `base64` field. `null` when the file is gone,
+   * which the exporter treats as a hard error rather than an omission.
+   */
+  read(id: string): Promise<string | null>;
+
   /** Succeeds when the file is already gone. */
   delete(id: string): Promise<void>;
 

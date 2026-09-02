@@ -1,0 +1,135 @@
+{
+  "format": "glacier-notes-export",
+  "schemaVersion": 1,
+  "exportedAt": "2026-09-02T17:09:45.785Z",
+  "notebooks": [
+    {
+      "id": "b94ab381-58b3-4012-b2f7-601b6d09fbaa",
+      "name": "Notes",
+      "createdAt": "2026-09-02T17:09:45.779Z",
+      "updatedAt": "2026-09-02T17:09:45.779Z",
+      "sortOrder": 0
+    },
+    {
+      "id": "8c9be7ee-b83a-436a-8686-d1c8459ff947",
+      "name": "Travel",
+      "createdAt": "2026-09-02T17:09:45.781Z",
+      "updatedAt": "2026-09-02T17:09:45.781Z",
+      "sortOrder": 1
+    }
+  ],
+  "notes": [
+    {
+      "id": "070ded79-4c7e-4bdb-a428-a110a214b722",
+      "notebookId": "b94ab381-58b3-4012-b2f7-601b6d09fbaa",
+      "type": "text",
+      "title": "Plain note",
+      "content": "A paragraph with **bold** text.",
+      "imageIds": [],
+      "pinned": false,
+      "archived": false,
+      "labels": ["d5fe0ee5-d974-43cc-808f-82730d9502d2"],
+      "createdAt": "2026-09-02T17:09:45.781Z",
+      "updatedAt": "2026-09-02T17:09:45.781Z"
+    },
+    {
+      "id": "7756764b-d504-4909-a90d-ea314729cb46",
+      "notebookId": "b94ab381-58b3-4012-b2f7-601b6d09fbaa",
+      "type": "text",
+      "title": "Note with an image",
+      "content": "Before\n\n![pixel](glacier-img://90958531-28f7-40dd-944d-b1b82f7b1d4b)\n\nAfter",
+      "imageIds": ["90958531-28f7-40dd-944d-b1b82f7b1d4b"],
+      "pinned": false,
+      "archived": false,
+      "labels": [],
+      "createdAt": "2026-09-02T17:09:45.781Z",
+      "updatedAt": "2026-09-02T17:09:45.781Z"
+    },
+    {
+      "id": "e884f0e2-e6fa-4925-856b-a8cee99aada5",
+      "notebookId": "8c9be7ee-b83a-436a-8686-d1c8459ff947",
+      "type": "checklist",
+      "title": "Packing list",
+      "content": "",
+      "checklist": [
+        {
+          "id": "d6f9843d-40c2-427f-bc26-7e2b5a4df2a5",
+          "text": "Passport",
+          "checked": true,
+          "sortOrder": 0
+        },
+        {
+          "id": "481decea-3371-4dfb-a20e-785efb2af090",
+          "text": "Straßenkarte",
+          "checked": false,
+          "sortOrder": 1
+        }
+      ],
+      "imageIds": [],
+      "pinned": false,
+      "archived": false,
+      "labels": [],
+      "createdAt": "2026-09-02T17:09:45.781Z",
+      "updatedAt": "2026-09-02T17:09:45.781Z"
+    },
+    {
+      "id": "1debb502-e49d-4c1d-8462-cd398df70135",
+      "notebookId": "b94ab381-58b3-4012-b2f7-601b6d09fbaa",
+      "type": "text",
+      "title": "Pinned and coloured",
+      "content": "Stays at the top.",
+      "imageIds": [],
+      "pinned": true,
+      "archived": false,
+      "labels": [],
+      "createdAt": "2026-09-02T17:09:45.781Z",
+      "updatedAt": "2026-09-02T17:09:45.781Z",
+      "color": "teal"
+    },
+    {
+      "id": "718f004b-6150-47dc-8c8b-a0ec6d80641a",
+      "notebookId": "b94ab381-58b3-4012-b2f7-601b6d09fbaa",
+      "type": "text",
+      "title": "Archived note",
+      "content": "Out of the way.",
+      "imageIds": [],
+      "pinned": false,
+      "archived": true,
+      "labels": [],
+      "createdAt": "2026-09-02T17:09:45.781Z",
+      "updatedAt": "2026-09-02T17:09:45.781Z"
+    },
+    {
+      "id": "a049e527-37f3-4eba-8d10-3459b1114f1e",
+      "notebookId": "b94ab381-58b3-4012-b2f7-601b6d09fbaa",
+      "type": "text",
+      "title": "Trashed note",
+      "content": "On its way out.",
+      "imageIds": [],
+      "pinned": false,
+      "archived": false,
+      "labels": [],
+      "createdAt": "2026-09-02T17:09:45.781Z",
+      "updatedAt": "2026-09-02T17:09:45.781Z",
+      "deletedAt": "2026-09-02T17:09:45.781Z"
+    }
+  ],
+  "labels": [
+    {
+      "id": "d5fe0ee5-d974-43cc-808f-82730d9502d2",
+      "name": "Urgent"
+    }
+  ],
+  "images": [
+    {
+      "id": "90958531-28f7-40dd-944d-b1b82f7b1d4b",
+      "mimeType": "image/png",
+      "fileName": "pixel.png",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    }
+  ],
+  "scope": {
+    "kind": "all"
+  },
+  "defaultNotebookId": "b94ab381-58b3-4012-b2f7-601b6d09fbaa"
+}

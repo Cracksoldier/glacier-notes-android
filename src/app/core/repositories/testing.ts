@@ -3,6 +3,8 @@ import { TestBed } from '@angular/core/testing';
 import { DATABASE_ADAPTER, type DatabaseAdapter } from '../database/database-adapter';
 import { runMigrations } from '../database/migrations/migration-runner';
 import { NodeSqliteAdapter } from '../database/node-sqlite.adapter';
+import { EXPORT_FILE_WRITER } from '../filesystem/export-file-writer';
+import { MemoryExportFileWriter } from '../filesystem/memory-export-file-writer';
 import { IMAGE_FILE_STORE } from '../images/image-file-store';
 import { MemoryImageFileStore } from '../images/memory-image-file-store';
 import { newId } from '../models/entity-id';
@@ -34,6 +36,9 @@ export interface TestRepositories {
   /** Image bytes, for the same reason the database is real: the garbage
    * collector's correctness is about what survives on both sides. */
   files: MemoryImageFileStore;
+  /** Where an export lands, so a spec can assert on what was written — and on
+   * the cases where nothing was. */
+  exports: MemoryExportFileWriter;
   /** The notebook migration 001 seeds; every note needs one and this is it. */
   defaultNotebookId: string;
 }
@@ -43,11 +48,13 @@ export async function createTestRepositories(): Promise<TestRepositories> {
   await adapter.open();
   await runMigrations(adapter);
   const files = new MemoryImageFileStore();
+  const exports = new MemoryExportFileWriter();
 
   TestBed.configureTestingModule({
     providers: [
       { provide: DATABASE_ADAPTER, useValue: adapter },
       { provide: IMAGE_FILE_STORE, useValue: files },
+      { provide: EXPORT_FILE_WRITER, useValue: exports },
     ],
   });
 
@@ -59,6 +66,7 @@ export async function createTestRepositories(): Promise<TestRepositories> {
     labels: TestBed.inject(LabelRepository),
     images: TestBed.inject(ImageAssetRepository),
     files,
+    exports,
     defaultNotebookId: await notebooks.getDefaultId(),
   };
 }

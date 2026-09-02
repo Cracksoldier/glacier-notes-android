@@ -14,6 +14,18 @@ describe('MemoryImageFileStore', () => {
     expect(new MemoryImageFileStore().url('missing')).toBe('');
   });
 
+  /** What the exporter puts in `ExportedImage.base64`: bytes only, no `data:` prefix. */
+  it('reads back the bare base64 it was written, without the data URL wrapper', async () => {
+    const store = new MemoryImageFileStore();
+    await store.write('a', 'QUJD', 'image/png');
+
+    expect(await store.read('a')).toBe('QUJD');
+  });
+
+  it('reads null for an id it has never seen', async () => {
+    expect(await new MemoryImageFileStore().read('missing')).toBeNull();
+  });
+
   it('lists what it holds and forgets what it deletes', async () => {
     const store = new MemoryImageFileStore();
     await store.write('a', 'QQ==', 'image/png');

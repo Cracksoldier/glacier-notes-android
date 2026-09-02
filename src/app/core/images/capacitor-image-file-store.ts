@@ -31,6 +31,25 @@ export class CapacitorImageFileStore implements ImageFileStore {
     await Filesystem.writeFile({ directory: Directory.Data, path: this.path(id), data: base64 });
   }
 
+  /**
+   * The mirror of `write()`: omitting `encoding` is what makes the plugin hand
+   * back base64 rather than decoding to text. `ReadFileResult.data` is typed
+   * `string | Blob` only because the web implementation answers with a `Blob`;
+   * on Android it is always the string, and the narrowing keeps that assumption
+   * out of a cast.
+   */
+  async read(id: string): Promise<string | null> {
+    try {
+      const { data } = await Filesystem.readFile({
+        directory: Directory.Data,
+        path: this.path(id),
+      });
+      return typeof data === 'string' ? data : null;
+    } catch {
+      return null;
+    }
+  }
+
   async delete(id: string): Promise<void> {
     try {
       await Filesystem.deleteFile({ directory: Directory.Data, path: this.path(id) });

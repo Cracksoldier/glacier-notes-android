@@ -1,5 +1,7 @@
 import { CapacitorSqliteAdapter } from '../app/core/database/capacitor-sqlite.adapter';
 import type { DatabaseAdapter } from '../app/core/database/database-adapter';
+import { CapacitorExportFileWriter } from '../app/core/filesystem/capacitor-export-file-writer';
+import type { ExportFileWriter } from '../app/core/filesystem/export-file-writer';
 import { CapacitorImageFileStore } from '../app/core/images/capacitor-image-file-store';
 import type { ImageFileStore } from '../app/core/images/image-file-store';
 
@@ -19,4 +21,8 @@ export function createDatabaseAdapter(): DatabaseAdapter {
 /** No fallback either, and for the same reason. */
 export function createImageFileStore(): ImageFileStore {
   return new CapacitorImageFileStore();
+}
+
+export function createExportFileWriter(): ExportFileWriter {
+  return new CapacitorExportFileWriter();
 }

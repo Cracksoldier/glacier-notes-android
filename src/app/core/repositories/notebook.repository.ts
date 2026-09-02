@@ -7,6 +7,7 @@ import { newId, nowIso } from '../models/entity-id';
 import type { Notebook } from '../models/notebook';
 import { countNotesInNotebook } from './note-queries';
 import { requireNotebookExists } from './note-writes';
+import { selectNotebooks } from './notebook-queries';
 import {
   applyNotebookPatch,
   deleteNotebookRow,
@@ -44,12 +45,7 @@ export class NotebookRepository {
   private readonly context = inject(RepositoryContext);
 
   list(): Promise<Notebook[]> {
-    return this.context.read('notebooks.list', async (adapter) => {
-      const rows = await adapter.query<NotebookRow>(
-        'SELECT * FROM notebooks ORDER BY sort_order, id',
-      );
-      return rows.map(notebookFromRow);
-    });
+    return this.context.read('notebooks.list', selectNotebooks);
   }
 
   get(id: string): Promise<Notebook> {

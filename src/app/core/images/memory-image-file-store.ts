@@ -19,6 +19,13 @@ export class MemoryImageFileStore implements ImageFileStore {
     return Promise.resolve();
   }
 
+  read(id: string): Promise<string | null> {
+    const stored = this.files.get(id);
+    // Stored as a whole `data:` URL so `url()` can be synchronous; the bytes
+    // are everything past the comma.
+    return Promise.resolve(stored === undefined ? null : stored.slice(stored.indexOf(',') + 1));
+  }
+
   delete(id: string): Promise<void> {
     this.files.delete(id);
     return Promise.resolve();

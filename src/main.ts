@@ -11,11 +11,16 @@ import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
 import { DATABASE_ADAPTER } from './app/core/database/database-adapter';
+import { EXPORT_FILE_WRITER } from './app/core/filesystem/export-file-writer';
 import { IMAGE_FILE_STORE } from './app/core/images/image-file-store';
 import { CapacitorPreferencesAdapter } from './app/core/preferences/capacitor-preferences.adapter';
 import { PREFERENCES_ADAPTER } from './app/core/preferences/preferences-adapter';
 import { provideStartup } from './app/core/startup';
-import { createDatabaseAdapter, createImageFileStore } from './environments/environment';
+import {
+  createDatabaseAdapter,
+  createExportFileWriter,
+  createImageFileStore,
+} from './environments/environment';
 
 bootstrapApplication(AppComponent, {
   providers: [
@@ -29,6 +34,7 @@ bootstrapApplication(AppComponent, {
     { provide: PREFERENCES_ADAPTER, useExisting: CapacitorPreferencesAdapter },
     { provide: DATABASE_ADAPTER, useFactory: createDatabaseAdapter },
     { provide: IMAGE_FILE_STORE, useFactory: createImageFileStore },
+    { provide: EXPORT_FILE_WRITER, useFactory: createExportFileWriter },
     // Settings, the database, the startup trash purge and the image sweep, in
     // that order — see provideStartup() for why the ordering cannot be
     // expressed as separate initializers.

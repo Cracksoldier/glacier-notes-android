@@ -25,7 +25,7 @@ reactive consumer marks the view dirty exactly when the language changes.
 
 `en.ts` reuses the desktop's key names and wording wherever an equivalent
 exists, so the two apps stay in step and the German is ported rather than
-authored. Keys under `placeholder.*` and `a11y.*`, plus `sidebar.notes`,
+authored. Keys under `a11y.*`, plus `sidebar.notes`,
 `sidebar.allNotes/allNotebooks/allLabels`, `settings.appearance` and
 `settings.themeSystem`, have **no desktop counterpart** — the desktop is
 pointer-driven and reaches those destinations differently. Their German is

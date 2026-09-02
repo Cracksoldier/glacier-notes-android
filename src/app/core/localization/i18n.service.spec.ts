@@ -43,6 +43,20 @@ describe('I18nService', () => {
     expect(german).toContain('2026');
   });
 
+  it('formats byte counts in decimal units, with the locale separator', () => {
+    const i18n = TestBed.inject(I18nService);
+    const settings = TestBed.inject(SettingsStore);
+
+    expect(i18n.formatBytes(0)).toBe('0 B');
+    expect(i18n.formatBytes(999)).toBe('999 B');
+    expect(i18n.formatBytes(1000)).toBe('1 kB');
+    expect(i18n.formatBytes(1_400_000)).toBe('1.4 MB');
+
+    settings.setLanguage('de');
+
+    expect(i18n.formatBytes(1_400_000)).toBe('1,4 MB');
+  });
+
   it('reflects the language on the document element', () => {
     TestBed.inject(I18nService);
     const settings = TestBed.inject(SettingsStore);

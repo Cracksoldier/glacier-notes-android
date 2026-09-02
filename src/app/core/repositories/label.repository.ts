@@ -4,6 +4,7 @@ import { labelFromRow } from '../database/row-mapper';
 import type { LabelRow } from '../database/rows';
 import { newId } from '../models/entity-id';
 import type { Label } from '../models/label';
+import { selectLabels } from './label-queries';
 import { requireLabelExists } from './note-writes';
 import { RepositoryContext } from './repository-context';
 import { EntityNotFoundError } from './repository-errors';
@@ -15,19 +16,6 @@ import { EntityNotFoundError } from './repository-errors';
  * Names are not unique. The desktop lets two labels share a name and this must
  * too, or an import that carries both would fail.
  */
-/**
- * The sidebar order, in one place so `LabelsStore` can hold the same one without
- * a second encoding of it — the duplication `docs/repositories.md` names as the
- * layer's standing hazard.
- *
- * The `id` tiebreaker is not decoration. `list()` reads a `SELECT` with no
- * `ORDER BY`, and label names are explicitly non-unique, so without a unique
- * final key two same-named labels can swap places between reads.
- */
-export function compareLabels(a: Label, b: Label): number {
-  return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
-}
-
 @Injectable({ providedIn: 'root' })
 export class LabelRepository {
   private readonly context = inject(RepositoryContext);
@@ -38,10 +26,7 @@ export class LabelRepository {
    * and the sidebar order has to match. The table holds tens of rows.
    */
   list(): Promise<Label[]> {
-    return this.context.read('labels.list', async (adapter) => {
-      const rows = await adapter.query<LabelRow>('SELECT * FROM labels');
-      return rows.map(labelFromRow).sort(compareLabels);
-    });
+    return this.context.read('labels.list', selectLabels);
   }
 
   get(id: string): Promise<Label> {

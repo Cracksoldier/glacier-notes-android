@@ -40,4 +40,20 @@ export class I18nService {
       new Date(iso),
     );
   }
+
+  /** Localized because the decimal separator differs: `1.4 MB` against `1,4 MB`. */
+  formatBytes(bytes: number): string {
+    const locale = this.settings.language() === 'de' ? 'de-DE' : 'en-US';
+    const units = ['B', 'kB', 'MB', 'GB'];
+    let value = bytes;
+    let unit = 0;
+    while (value >= 1000 && unit < units.length - 1) {
+      value /= 1000;
+      unit++;
+    }
+    const formatted = new Intl.NumberFormat(locale, {
+      maximumFractionDigits: unit === 0 ? 0 : 1,
+    }).format(value);
+    return `${formatted} ${units[unit]}`;
+  }
 }

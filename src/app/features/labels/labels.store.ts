@@ -1,7 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 
 import type { Label } from '../../core/models/label';
-import { compareLabels, LabelRepository } from '../../core/repositories/label.repository';
+import { compareLabels } from '../../core/repositories/label-queries';
+import { LabelRepository } from '../../core/repositories/label.repository';
 
 export type LabelsStatus = 'loading' | 'ready' | 'error';
 

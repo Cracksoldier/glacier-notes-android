@@ -164,8 +164,21 @@ export const en = {
   'search.prompt': 'Search your notes',
   'search.promptHint': 'Titles, note text and checklist items.',
 
-  // android: placeholder copy for destinations the desktop reaches differently.
-  'placeholder.importExport': 'Exchange .glacier.json archives with Glacier Notes on the desktop.',
+  // android: the desktop reaches export through a save dialog; until M14 adds
+  // one, the file lands in app-private storage and this copy says so.
+  'importExport.exportHeading': 'Export',
+  'importExport.exportHint':
+    'Writes a .glacier.json archive of every note, notebook, label and image. Glacier Notes on the desktop can import it.',
+  'importExport.exportAction': 'Export all notes',
+  'importExport.exporting': 'Exporting…',
+  'importExport.exportDone': 'Saved {fileName} ({size}).',
+  'importExport.exportCounts':
+    '{notebooks} notebooks · {notes} notes · {labels} labels · {images} images',
+  'importExport.exportLocation': 'Stored in this app’s private folder on the device.',
+  'importExport.errorMissingImages':
+    'Nothing was exported: {count} attached images are missing from this device. The desktop app would refuse a file with images it cannot find.',
+  'importExport.errorInvalid': 'Nothing was exported: the archive failed an internal check.',
+  'importExport.errorWrite': 'Could not write the export. Free up some space and try again.',
 
   'settings.title': 'Settings',
   'settings.appearance': 'Appearance',
