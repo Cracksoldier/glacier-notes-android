@@ -15,6 +15,7 @@ export type NoteAction =
   | 'unpin'
   | 'color'
   | 'labels'
+  | 'share'
   | 'archive'
   | 'unarchive'
   | 'trash'
@@ -50,6 +51,7 @@ export function noteActionChoices(note: Note, view: NoteView['kind']): readonly 
       : ({ action: 'pin', labelKey: 'note.pin' } as const),
     { action: 'color', labelKey: 'note.color' },
     { action: 'labels', labelKey: 'note.labels' },
+    { action: 'share', labelKey: 'note.share' },
     note.archived
       ? ({ action: 'unarchive', labelKey: 'note.unarchive' } as const)
       : ({ action: 'archive', labelKey: 'note.archive' } as const),

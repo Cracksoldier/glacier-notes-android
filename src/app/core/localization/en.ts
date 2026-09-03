@@ -82,6 +82,7 @@ export const en = {
   'note.color': 'Color',
   'note.colorNone': 'No color',
   'note.labels': 'Labels',
+  'note.share': 'Share',
   'note.archive': 'Archive',
   'note.unarchive': 'Restore from archive',
   'note.moveToTrash': 'Move to trash',
@@ -164,17 +165,22 @@ export const en = {
   'search.prompt': 'Search your notes',
   'search.promptHint': 'Titles, note text and checklist items.',
 
-  // android: the desktop reaches export through a save dialog; until M14 adds
-  // one, the file lands in app-private storage and this copy says so.
+  // android: the desktop reaches export through a save dialog. Here there are
+  // two destinations — the system's create-document screen and the share sheet —
+  // so the "where did it go" line depends on which button was pressed.
   'importExport.exportHeading': 'Export',
   'importExport.exportHint':
     'Writes a .glacier.json archive of every note, notebook, label and image. Glacier Notes on the desktop can import it.',
-  'importExport.exportAction': 'Export all notes',
+  'importExport.exportSave': 'Save to a file…',
+  'importExport.exportShare': 'Share…',
   'importExport.exporting': 'Exporting…',
   'importExport.exportDone': 'Saved {fileName} ({size}).',
+  'importExport.exportShared': 'Shared {fileName} ({size}).',
   'importExport.exportCounts':
     '{notebooks} notebooks · {notes} notes · {labels} labels · {images} images',
-  'importExport.exportLocation': 'Stored in this app’s private folder on the device.',
+  'importExport.exportSavedWhere': 'Saved where you chose. It is not stored inside the app.',
+  'importExport.exportSharedWhere':
+    'Handed to the app you picked. Nothing is kept here once you share again or restart.',
   'importExport.errorMissingImages':
     'Nothing was exported: {count} attached images are missing from this device. The desktop app would refuse a file with images it cannot find.',
   'importExport.errorInvalid': 'Nothing was exported: the archive failed an internal check.',
@@ -187,6 +193,9 @@ export const en = {
   'importExport.importHint':
     'Reads a .glacier.json archive written by Glacier Notes. Nothing is changed until you confirm.',
   'importExport.importAction': 'Choose a file…',
+  // A document provider need not report a display name, and the URI's last path
+  // segment is an opaque document id rather than one.
+  'importExport.importUnnamedFile': 'The chosen file',
   'importExport.importConfirm': 'Import',
   'importExport.importCancel': 'Cancel',
   'importExport.importing': 'Importing…',
@@ -202,8 +211,23 @@ export const en = {
   'importExport.importErrorHeading': 'This file cannot be imported.',
   'importExport.importMoreErrors': '{count} further problems are not shown.',
   'importExport.importErrorRead': 'The file could not be read.',
+  'importExport.importErrorTooLarge': 'That file is too large to read on this device.',
   'importExport.importErrorApply':
     'The import failed and nothing was changed. Your notes are as they were.',
+
+  // android: no desktop equivalent. Replace is the only action in the app that
+  // overwrites notes without leaving them in the trash, so it is confirmed.
+  'importExport.replaceWarningTitle': 'Overwrite existing notes?',
+  'importExport.replaceWarningHint':
+    'Notes, notebooks and labels with matching IDs are replaced by the ones in this file. This cannot be undone.',
+
+  // android: the desktop is a local app on a machine the user administers; a
+  // phone is not, so the two things a backup file implies are stated outright.
+  'importExport.disclosureHeading': 'Before you back up',
+  'importExport.disclosureUnencrypted':
+    'A .glacier.json file is not encrypted. Anyone who can open it can read every note. Keep it somewhere you trust.',
+  'importExport.disclosureUninstall':
+    'Everything is stored only on this device. Uninstalling the app deletes all notes and images with it.',
 
   'settings.title': 'Settings',
   'settings.appearance': 'Appearance',
@@ -245,6 +269,10 @@ export const en = {
   'settings.trashAutoPurgeNever': 'Never',
   'settings.trashAutoPurgeDays': '{count} days',
   'settings.trashAutoPurgeHint': 'Checked once each time the app starts.',
+
+  'settings.backup': 'Backup',
+  'settings.backupOpen': 'Import and export',
+  'settings.backupHint': 'Write a .glacier.json archive, or read one back in.',
 
   // android: the desktop has no diagnostics surface. This is the one place the
   // engine's own message is shown, so that a database failure is nameable

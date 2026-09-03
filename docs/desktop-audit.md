@@ -417,9 +417,12 @@ Recorded rather than decided — these need a product call before the milestones
    restoring a backup onto a fresh phone work without asking a question the user has no basis to
    answer, and it keeps the milestones' two named strategies as the only two the user ever sees.
    See `docs/import-export.md`.
-2. **Scoped export.** Desktop can export a single notebook or a single note; Android spec §15.2
-   mandates only whole-collection export. Per-note export pairs naturally with the Android share
-   sheet. *Decision needed before M12/M14.*
+2. ~~**Scoped export.**~~ **Decided at M14: the scopes ship in the contract and stay unwired.**
+   `collectExport` accepts all three because narrowing the port would mean maintaining code that
+   differs from the authoritative source, but the UI exports only the whole collection. The share
+   sheet did not turn out to want an envelope: sharing one note means handing a receiving app
+   readable text, so `noteShareText` sends Markdown and a `.glacier.json` stays a backup.
+   See `docs/import-export.md`.
 3. ~~**GIF support.**~~ **Decided at M10: GIF is accepted everywhere, not import-only.** Rejecting
    it on the attach path while accepting it on import would leave the two paths disagreeing about
    what a valid image is, for no gain — the WebView renders GIF and nothing here recompresses.

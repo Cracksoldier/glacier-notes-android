@@ -1,12 +1,18 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { ExportDestination } from '../../core/filesystem/export-file-writer';
 import { ExportService, type ExportResult } from '../../core/import-export/export.service';
 import {
   type ImportApplyResult,
   type ImportInspectResult,
   ImportService,
 } from '../../core/import-export/import.service';
+import {
+  DOCUMENT_GATEWAY,
+  type OpenDocumentResult,
+  type PickedDocument,
+} from '../../core/native/document-gateway';
 import { MemoryPreferencesAdapter } from '../../core/preferences/memory-preferences.adapter';
 import { PREFERENCES_ADAPTER } from '../../core/preferences/preferences-adapter';
 import { SettingsStore } from '../../core/preferences/settings.store';
@@ -14,14 +20,23 @@ import { LabelsStore } from '../labels/labels.store';
 import { NotebooksStore } from '../notebooks/notebooks.store';
 import { NotesStore } from '../notes/notes.store';
 import { ImportExportPage } from './import-export.page';
+import { ImportPrompts } from './import-prompts';
 
 describe('ImportExportPage', () => {
-  const exporter = { exportAll: vi.fn<() => Promise<ExportResult>>() };
+  const exporter = {
+    exportAll: vi.fn<(destination: ExportDestination) => Promise<ExportResult>>(),
+  };
   const importer = {
-    inspect: vi.fn<(file: File) => Promise<ImportInspectResult>>(),
+    inspect: vi.fn<(document: PickedDocument) => Promise<ImportInspectResult>>(),
     apply: vi.fn<(strategy: string) => Promise<ImportApplyResult>>(),
     cancel: vi.fn<() => void>(),
   };
+  const documents = {
+    open: vi.fn<() => Promise<OpenDocumentResult>>(),
+    save: vi.fn(),
+  };
+  /** The alert itself is unreachable under jsdom; only its answer matters here. */
+  const prompts = { confirmReplace: vi.fn<() => Promise<boolean>>() };
   const stores = {
     notebooks: { load: vi.fn<() => Promise<void>>() },
     labels: { load: vi.fn<() => Promise<void>>() },
@@ -33,6 +48,11 @@ describe('ImportExportPage', () => {
     importer.inspect.mockReset();
     importer.apply.mockReset();
     importer.cancel.mockReset();
+    documents.open.mockReset().mockResolvedValue({
+      status: 'opened',
+      document: { name: 'backup.glacier.json', text: '{}' },
+    });
+    prompts.confirmReplace.mockReset().mockResolvedValue(true);
     for (const store of Object.values(stores)) {
       store.load.mockReset().mockResolvedValue(undefined);
     }
@@ -41,6 +61,8 @@ describe('ImportExportPage', () => {
         { provide: PREFERENCES_ADAPTER, useValue: new MemoryPreferencesAdapter() },
         { provide: ExportService, useValue: exporter },
         { provide: ImportService, useValue: importer },
+        { provide: DOCUMENT_GATEWAY, useValue: documents },
+        { provide: ImportPrompts, useValue: prompts },
         { provide: NotebooksStore, useValue: stores.notebooks },
         { provide: LabelsStore, useValue: stores.labels },
         { provide: NotesStore, useValue: stores.notes },
@@ -72,15 +94,14 @@ describe('ImportExportPage', () => {
     fixture.detectChanges();
   }
 
-  /**
-   * The `change` handler reads `input.files`, which jsdom will not let a test
-   * assign, so the picked file is planted on the element first.
-   */
   async function pick(fixture: ComponentFixture<ImportExportPage>): Promise<void> {
-    const input = find(fixture, 'input[type="file"]') as HTMLInputElement;
-    const file = new File(['{}'], 'backup.glacier.json', { type: 'application/json' });
-    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
-    input.dispatchEvent(new Event('change'));
+    find(fixture, '.transfer__pick').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  async function confirm(fixture: ComponentFixture<ImportExportPage>): Promise<void> {
+    find(fixture, '.transfer__confirm').click();
     await fixture.whenStable();
     fixture.detectChanges();
   }
@@ -94,6 +115,7 @@ describe('ImportExportPage', () => {
 
   const saved: ExportResult = {
     status: 'saved',
+    destination: 'save',
     fileName: 'glacier-export-2026-07-19.glacier.json',
     byteLength: 1_400_000,
     counts: { notebooks: 2, notes: 6, labels: 1, images: 1 },
@@ -153,6 +175,32 @@ describe('ImportExportPage', () => {
     expect(fixture.nativeElement.textContent).not.toContain('glacier-export-2026-07-19');
   });
 
+  it('sends each export button its own destination and says where it went', async () => {
+    exporter.exportAll.mockResolvedValue({ ...saved, destination: 'share' });
+    const fixture = render();
+
+    find(fixture, '.transfer__share').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(exporter.exportAll).toHaveBeenCalledWith('share');
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Shared glacier-export-2026-07-19.glacier.json');
+    expect(text).toContain('Handed to the app you picked');
+  });
+
+  /** A dismissed save dialog is not a failure and has nothing to report. */
+  it('says nothing when the export destination is dismissed', async () => {
+    exporter.exportAll.mockResolvedValue({ status: 'cancelled' });
+    const fixture = render();
+
+    await exportAll(fixture);
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).not.toContain('glacier-export-');
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+  });
+
   it('disables the button while the export runs', async () => {
     let release = (_result: ExportResult) => {};
     exporter.exportAll.mockReturnValue(
@@ -188,9 +236,7 @@ describe('ImportExportPage', () => {
     // The strategy is not a question when there is nothing to overwrite.
     expect(fixture.nativeElement.querySelector('ion-radio-group')).toBeNull();
 
-    find(fixture, '.transfer__confirm').click();
-    await fixture.whenStable();
-    fixture.detectChanges();
+    await confirm(fixture);
 
     expect(importer.apply).toHaveBeenCalledWith('preserve');
     expect(fixture.nativeElement.textContent).toContain('Imported 2 notebooks');
@@ -212,9 +258,7 @@ describe('ImportExportPage', () => {
 
     group.dispatchEvent(new CustomEvent('ionChange', { detail: { value: 'copy' } }));
     fixture.detectChanges();
-    find(fixture, '.transfer__confirm').click();
-    await fixture.whenStable();
-    fixture.detectChanges();
+    await confirm(fixture);
 
     expect(importer.apply).toHaveBeenCalledWith('copy');
   });
@@ -226,8 +270,7 @@ describe('ImportExportPage', () => {
     const fixture = render();
 
     await pick(fixture);
-    find(fixture, '.transfer__confirm').click();
-    await fixture.whenStable();
+    await confirm(fixture);
 
     expect(importer.apply).toHaveBeenCalledWith('replace');
   });
@@ -238,8 +281,7 @@ describe('ImportExportPage', () => {
     const fixture = render();
 
     await pick(fixture);
-    find(fixture, '.transfer__confirm').click();
-    await fixture.whenStable();
+    await confirm(fixture);
 
     expect(stores.notebooks.load).toHaveBeenCalled();
     expect(stores.labels.load).toHaveBeenCalled();
@@ -252,9 +294,7 @@ describe('ImportExportPage', () => {
     const fixture = render();
 
     await pick(fixture);
-    find(fixture, '.transfer__confirm').click();
-    await fixture.whenStable();
-    fixture.detectChanges();
+    await confirm(fixture);
 
     expect(stores.notes.load).not.toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('nothing was changed');
@@ -287,6 +327,67 @@ describe('ImportExportPage', () => {
     expect(importer.cancel).toHaveBeenCalled();
     expect(importer.apply).not.toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).not.toContain('backup.glacier.json');
+  });
+
+  it('does nothing at all when the document picker is dismissed', async () => {
+    documents.open.mockResolvedValue({ status: 'cancelled' });
+    const fixture = render();
+
+    await pick(fixture);
+
+    expect(importer.inspect).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('distinguishes a file too large to read from one that could not be read', async () => {
+    documents.open.mockResolvedValueOnce({ status: 'too-large' });
+    const fixture = render();
+
+    await pick(fixture);
+    expect(fixture.nativeElement.textContent).toContain('too large to read');
+
+    documents.open.mockResolvedValueOnce({ status: 'failed' });
+    await pick(fixture);
+    expect(fixture.nativeElement.textContent).toContain('could not be read');
+  });
+
+  it('falls back to a name when the provider reports none', async () => {
+    documents.open.mockResolvedValue({ status: 'opened', document: { name: null, text: '{}' } });
+    importer.inspect.mockResolvedValue({ ...ready, fileName: null });
+    const fixture = render();
+
+    await pick(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('The chosen file');
+  });
+
+  it('abandons a replace import the user does not confirm', async () => {
+    importer.inspect.mockResolvedValue({ ...ready, hasConflicts: true });
+    prompts.confirmReplace.mockResolvedValue(false);
+    const fixture = render();
+
+    await pick(fixture);
+    await confirm(fixture);
+
+    expect(importer.apply).not.toHaveBeenCalled();
+    // The preview survives, so the user can switch to copies instead.
+    expect(fixture.nativeElement.querySelector('ion-radio-group')).not.toBeNull();
+  });
+
+  it('does not warn about overwriting when nothing would be overwritten', async () => {
+    importer.inspect.mockResolvedValue({ ...ready, hasConflicts: true });
+    importer.apply.mockResolvedValue({ status: 'done', counts: ready.counts });
+    const fixture = render();
+
+    await pick(fixture);
+    find(fixture, 'ion-radio-group').dispatchEvent(
+      new CustomEvent('ionChange', { detail: { value: 'copy' } }),
+    );
+    fixture.detectChanges();
+    await confirm(fixture);
+
+    expect(prompts.confirmReplace).not.toHaveBeenCalled();
+    expect(importer.apply).toHaveBeenCalledWith('copy');
   });
 
   it('renders the import section in German', async () => {

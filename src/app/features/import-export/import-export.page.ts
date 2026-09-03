@@ -14,6 +14,7 @@ import {
   IonToolbar,
 } from '@ionic/angular';
 
+import type { ExportDestination } from '../../core/filesystem/export-file-writer';
 import { ExportService, type ExportResult } from '../../core/import-export/export.service';
 import {
   type ImportApplyResult,
@@ -23,9 +24,11 @@ import {
 import type { ImportStrategy } from '../../core/import-export/transfer-contract';
 import type { TranslationKey } from '../../core/localization/en';
 import { I18nService } from '../../core/localization/i18n.service';
+import { DOCUMENT_GATEWAY } from '../../core/native/document-gateway';
 import { LabelsStore } from '../labels/labels.store';
 import { NotebooksStore } from '../notebooks/notebooks.store';
 import { NotesStore } from '../notes/notes.store';
+import { ImportPrompts } from './import-prompts';
 
 /**
  * How many validator diagnostics are shown before the rest are counted. They are
@@ -36,14 +39,19 @@ import { NotesStore } from '../notes/notes.store';
 const SHOWN_ERRORS = 5;
 
 /**
- * M12's harness, not M14's destination. Export lands in app-private storage and
- * import reads through a plain `<input type="file">`; M14 replaces both ends with
- * the Android document picker and the share sheet.
+ * Both ends of the transfer, over the system's own file UI.
+ *
+ * Import goes through `DOCUMENT_GATEWAY.open()` and export through the writer's
+ * two destinations, so nothing here knows what a `content://` URI is. A
+ * cancellation is a status on every one of those calls rather than a rejection,
+ * which is why the handlers below have no `catch`: the only thing left to throw
+ * is a bug.
  *
  * The import preview is an inline section rather than a modal or an alert on
  * purpose: an Ionic overlay puts its contents outside the component under jsdom,
  * which would make the whole conflict flow untestable — the rule
- * `docs/notebooks.md` records.
+ * `docs/notebooks.md` records. The one alert that remains, the replace warning,
+ * is behind `ImportPrompts` for the same reason.
  */
 @Component({
   selector: 'app-import-export-page',
@@ -82,23 +90,16 @@ const SHOWN_ERRORS = 5;
           expand="block"
           fill="outline"
           [disabled]="busy()"
-          (click)="fileInput.click()"
+          (click)="pickFile()"
         >
           {{ i18n.t('importExport.importAction') }}
         </ion-button>
-        <!-- No capture attribute, for the reason docs/images.md gives: it is the
-             one thing that makes Capacitor take the camera branch. -->
-        <input
-          #fileInput
-          class="transfer__file"
-          type="file"
-          accept="application/json,.json,.glacier.json"
-          (change)="onFilePicked($event)"
-        />
 
         @if (preview(); as file) {
           <div class="transfer__result">
-            <p class="transfer__saved">{{ file.fileName }}</p>
+            <p class="transfer__saved">
+              {{ file.fileName ?? i18n.t('importExport.importUnnamedFile') }}
+            </p>
             <ion-note>{{ i18n.t('importExport.exportCounts', file.counts) }}</ion-note>
             <ion-note>
               {{
@@ -178,29 +179,53 @@ const SHOWN_ERRORS = 5;
         <h2 class="transfer__heading">{{ i18n.t('importExport.exportHeading') }}</h2>
         <p class="transfer__hint">{{ i18n.t('importExport.exportHint') }}</p>
 
-        <ion-button class="transfer__export" expand="block" [disabled]="busy()" (click)="exportAll()">
+        <ion-button
+          class="transfer__export"
+          expand="block"
+          [disabled]="busy()"
+          (click)="exportAll('save')"
+        >
           @if (busy()) {
             <ion-spinner slot="start" name="crescent" />
             {{ i18n.t('importExport.exporting') }}
           } @else {
-            {{ i18n.t('importExport.exportAction') }}
+            {{ i18n.t('importExport.exportSave') }}
           }
+        </ion-button>
+        <ion-button
+          class="transfer__share"
+          expand="block"
+          fill="outline"
+          [disabled]="busy()"
+          (click)="exportAll('share')"
+        >
+          {{ i18n.t('importExport.exportShare') }}
         </ion-button>
 
         @if (saved(); as result) {
           <div class="transfer__result">
             <p class="transfer__saved">
               {{
-                i18n.t('importExport.exportDone', {
-                  fileName: result.fileName,
-                  size: i18n.formatBytes(result.byteLength),
-                })
+                i18n.t(
+                  result.destination === 'share'
+                    ? 'importExport.exportShared'
+                    : 'importExport.exportDone',
+                  { fileName: result.fileName, size: i18n.formatBytes(result.byteLength) }
+                )
               }}
             </p>
             <ion-note>
               {{ i18n.t('importExport.exportCounts', result.counts) }}
             </ion-note>
-            <ion-note>{{ i18n.t('importExport.exportLocation') }}</ion-note>
+            <ion-note>
+              {{
+                i18n.t(
+                  result.destination === 'share'
+                    ? 'importExport.exportSharedWhere'
+                    : 'importExport.exportSavedWhere'
+                )
+              }}
+            </ion-note>
           </div>
         }
 
@@ -209,6 +234,12 @@ const SHOWN_ERRORS = 5;
             {{ i18n.t(key, errorParams()) }}
           </p>
         }
+      </section>
+
+      <section class="transfer">
+        <h2 class="transfer__heading">{{ i18n.t('importExport.disclosureHeading') }}</h2>
+        <p class="transfer__hint">{{ i18n.t('importExport.disclosureUnencrypted') }}</p>
+        <p class="transfer__hint">{{ i18n.t('importExport.disclosureUninstall') }}</p>
       </section>
     </ion-content>
   `,
@@ -252,10 +283,6 @@ const SHOWN_ERRORS = 5;
       line-height: 1.5;
     }
 
-    .transfer__file {
-      display: none;
-    }
-
     .transfer__choice {
       display: flex;
       flex-direction: column;
@@ -289,6 +316,8 @@ export class ImportExportPage {
   readonly i18n = inject(I18nService);
   private readonly exporter = inject(ExportService);
   private readonly importer = inject(ImportService);
+  private readonly documents = inject(DOCUMENT_GATEWAY);
+  private readonly prompts = inject(ImportPrompts);
   private readonly notebooks = inject(NotebooksStore);
   private readonly labels = inject(LabelsStore);
   private readonly notes = inject(NotesStore);
@@ -298,6 +327,13 @@ export class ImportExportPage {
   private readonly result = signal<ExportResult | undefined>(undefined);
   private readonly inspection = signal<ImportInspectResult | undefined>(undefined);
   private readonly applied = signal<ImportApplyResult | undefined>(undefined);
+
+  /**
+   * Kept apart from `inspection`, because these are outcomes of the picker
+   * rather than of the file: nothing was ever read, so there is nothing to
+   * inspect. A `cancelled` picker sets nothing at all.
+   */
+  private readonly openFailure = signal<'too-large' | 'failed' | undefined>(undefined);
 
   /**
    * Only ever the two the desktop offers. `preserve` is not a choice — it is
@@ -329,6 +365,12 @@ export class ImportExportPage {
   });
 
   protected readonly importErrorKey = computed<TranslationKey | undefined>(() => {
+    const failure = this.openFailure();
+    if (failure !== undefined) {
+      return failure === 'too-large'
+        ? 'importExport.importErrorTooLarge'
+        : 'importExport.importErrorRead';
+    }
     if (this.inspection()?.status === 'failed') {
       return 'importExport.importErrorRead';
     }
@@ -361,32 +403,40 @@ export class ImportExportPage {
     return result?.status === 'missing-images' ? { count: result.imageCount } : {};
   });
 
-  protected async exportAll(): Promise<void> {
+  protected async exportAll(destination: ExportDestination): Promise<void> {
     this.busy.set(true);
     // Clearing first so a second attempt cannot leave the previous run's
     // filename on screen next to a fresh failure.
     this.result.set(undefined);
     try {
-      this.result.set(await this.exporter.exportAll());
+      this.result.set(await this.exporter.exportAll(destination));
     } finally {
       this.busy.set(false);
     }
   }
 
-  protected async onFilePicked(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    // Cleared so picking the same file twice in a row still fires `change`.
-    input.value = '';
-    if (!file) {
-      return;
-    }
+  /**
+   * `busy` covers the picker too, although the read happens natively: the user
+   * can return from the dialog to a page whose previous result is gone, and a
+   * second tap while the first document is still being parsed would race it.
+   */
+  protected async pickFile(): Promise<void> {
     this.inspection.set(undefined);
     this.applied.set(undefined);
+    this.openFailure.set(undefined);
     this.strategy.set('replace');
     this.busy.set(true);
     try {
-      this.inspection.set(await this.importer.inspect(file));
+      const opened = await this.documents.open();
+      switch (opened.status) {
+        case 'opened':
+          this.inspection.set(await this.importer.inspect(opened.document));
+          break;
+        case 'cancelled':
+          break;
+        default:
+          this.openFailure.set(opened.status);
+      }
     } finally {
       this.busy.set(false);
     }
@@ -415,11 +465,13 @@ export class ImportExportPage {
     if (!preview) {
       return;
     }
+    const strategy: ImportStrategy = preview.hasConflicts ? this.strategy() : 'preserve';
+    if (strategy === 'replace' && !(await this.prompts.confirmReplace())) {
+      return;
+    }
     this.busy.set(true);
     try {
-      const applied = await this.importer.apply(
-        preview.hasConflicts ? this.strategy() : 'preserve',
-      );
+      const applied = await this.importer.apply(strategy);
       this.applied.set(applied);
       this.inspection.set(undefined);
       if (applied.status === 'done') {

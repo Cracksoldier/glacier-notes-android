@@ -1,6 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 
-import { EXPORT_FILE_WRITER } from '../filesystem/export-file-writer';
+import {
+  EXPORT_FILE_WRITER,
+  type ExportDestination,
+  type ExportWriteOutcome,
+} from '../filesystem/export-file-writer';
 import { IMAGE_FILE_STORE } from '../images/image-file-store';
 import { referencedImageIds } from '../models/image-asset';
 import { CollectionRepository } from '../repositories/collection-snapshot';
@@ -19,7 +23,15 @@ import {
 export type ExportCounts = ImportCounts;
 
 export type ExportResult =
-  | { status: 'saved'; fileName: string; byteLength: number; counts: ExportCounts }
+  | {
+      status: 'saved';
+      destination: ExportDestination;
+      fileName: string;
+      byteLength: number;
+      counts: ExportCounts;
+    }
+  /** The user dismissed the save dialog. Nothing was written and nothing failed. */
+  | { status: 'cancelled' }
   | { status: 'missing-images'; imageCount: number }
   | { status: 'invalid'; errors: string[] }
   | { status: 'failed' };
@@ -38,12 +50,12 @@ export class ExportService {
   private readonly files = inject(IMAGE_FILE_STORE);
   private readonly writer = inject(EXPORT_FILE_WRITER);
 
-  /** The whole local collection, which is the only scope M12 offers. */
-  exportAll(): Promise<ExportResult> {
-    return this.export({ kind: 'all' });
+  /** The whole local collection, which is the only scope wired to the UI. */
+  exportAll(destination: ExportDestination): Promise<ExportResult> {
+    return this.export({ kind: 'all' }, destination);
   }
 
-  private async export(scope: ExportScope): Promise<ExportResult> {
+  private async export(scope: ExportScope, destination: ExportDestination): Promise<ExportResult> {
     let json: string;
     let counts: ExportCounts;
     try {
@@ -102,12 +114,16 @@ export class ExportService {
     }
 
     const fileName = exportFileName();
+    let outcome: ExportWriteOutcome;
     try {
-      await this.writer.write(fileName, json);
+      outcome = await this.writer.write(fileName, json, destination);
     } catch {
       return { status: 'failed' };
     }
-    return { status: 'saved', fileName, byteLength: byteLength(json), counts };
+    if (outcome === 'cancelled') {
+      return { status: 'cancelled' };
+    }
+    return { status: 'saved', destination, fileName, byteLength: byteLength(json), counts };
   }
 }
 

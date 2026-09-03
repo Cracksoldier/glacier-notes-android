@@ -1,4 +1,4 @@
-# Import and export (M12, M13)
+# Import and export (M12, M13, M14)
 
 M12 and M13 make the app exchange `.glacier.json` files with the **existing
 Glacier Notes desktop app, without modification on either side**. That is the
@@ -8,9 +8,9 @@ design would pick.
 
 M12 shipped the *export* half; M13 the *import* half — reading a file the user
 picked, validating it, previewing it, and applying it under both conflict
-strategies. The Android save dialog, share sheet and document picker are M14;
-until then an export goes into the app's private directory and an import comes
-from a plain `<input type="file">`.
+strategies. M14 replaced both ends with Android's own file UI: a save dialog and
+a share sheet for the export, the system document picker for the import, and a
+per-note text share.
 
 This document records the reasoning a reader cannot recover from the code.
 Sections below are M12 unless they say otherwise.
@@ -88,8 +88,10 @@ determinism is worth keeping. It is not worth asserting across the two apps.
 only ever calls `{kind:'all'}`. Narrowing the port would mean maintaining code
 that differs from the authoritative source, and the scope filtering is nine
 lines. `docs/desktop-audit.md` §11 left Android's adoption of scoped exports
-open; the answer is that the contract supports them and no UI reaches them until
-M14 can offer a share sheet. `transfer-contract.spec.ts` covers all three.
+open; the answer is that the contract supports them and no UI reaches them. M14
+wired the share sheet and still exports only `{kind:'all'}`, because sharing one
+note is text rather than an envelope. `transfer-contract.spec.ts` covers all
+three.
 
 ## The export note set is not `list({kind:'all'})`
 
@@ -256,17 +258,13 @@ constant rather than split the transaction — `docs/repositories.md` names an
 import as exactly the operation that may legitimately need this, and splitting
 it would give up the all-or-nothing rollback that makes an import safe.
 
-## `Directory.Data` is a harness, not a destination
+## `Directory.Data` was a harness (M12, removed by M14)
 
-`CapacitorExportFileWriter` writes to `Directory.Data`
-(`context.getFilesDir()`): app-private, no permission, invisible to a file
-manager, retrievable only over `adb exec-out run-as`. That is what lets M12 ship
-a working Export button without the document picker.
-
-**M14 owns the real destination.** It adds another `ExportFileWriter`
-implementation behind the same token; `ExportService` does not change. The seam
-exists for the same reason `ImageFileStore` does — a plugin call inside the
-service would make it unrunnable under jsdom.
+M12 wrote to `Directory.Data` (`context.getFilesDir()`): app-private, invisible
+to a file manager, retrievable only over `adb exec-out run-as`. That let the
+Export button ship and work before there was a picker, and it is gone. The seam
+survived unchanged, which is what the seam was for — see *Two destinations, one
+writer* below.
 
 ## Import is two phases, because the desktop's is (M13)
 
@@ -282,9 +280,10 @@ signal: it is a multi-megabyte object graph, and a signal would put it in change
 detection and keep it alive in the component tree. The page holds only the
 counts and the flags.
 
-There is no `canceled` status anywhere. An `<input type="file">` the user backs
-out of never fires `change`, so a cancelled pick is the page doing nothing;
-`cancel()` exists for the explicit Cancel button on the preview.
+`ImportService` still has no `cancelled` status, though a cancellation is now a
+real thing the picker reports: `DocumentGateway.open()` answers it one layer out
+and the page simply never calls `inspect`. What reaches `inspect` is always a
+document. `cancel()` exists for the explicit Cancel button on the preview.
 
 A parse failure returns a **constant** message rather than the thrown one. V8's
 `JSON.parse` errors quote the offending token, which in a notes file is a
@@ -449,6 +448,128 @@ desktop's own `validateEnvelope` accepts it, `detectConflicts` reports none, and
 `applyImportEnvelope` restores all six notes with their checklist state,
 colour, pin, label, archive and trash flags, and a byte-identical image file.
 
+## The SAF bridge is hand-written (M14)
+
+`android/app/src/main/java/com/glacier/notes/DocumentsPlugin.java` is a Capacitor
+plugin with two methods, `openDocument` and `createDocument`, living in the app
+module rather than in `node_modules`.
+
+It is hand-written because there is no maintained Capacitor 8 plugin for
+`ACTION_CREATE_DOCUMENT`. `@capawesome/capacitor-file-picker` only *picks*, and
+every "file saver" package checked was either unpublished or unmaintained.
+Since a bridge was unavoidable for saving, it handles opening too: one file, no
+third-party picker dependency, and a `content://` URI never crosses into
+TypeScript.
+
+Four things in it are not obvious:
+
+- **`saveInstanceState()` is overridden to return `null`.** `Plugin`'s own
+  implementation serialises the entire call options JSON into the Activity
+  Bundle (`Plugin.java:921-936`). For `createDocument` that is the whole export
+  — every note body, every base64 image — crossing a Binder into
+  `system_server`. That is both a direct violation of the never-log-note-content
+  rule and a guaranteed `TransactionTooLargeException` at export size. Rotating
+  the device with the SAF dialog open is the case that hits it.
+- **`openOutputStream(uri, "wt")`, not `"w"`.** Several document providers do not
+  truncate on `"w"`, so saving a smaller export over a larger previous one would
+  leave the tail of the old file behind and produce unparseable JSON. On a write
+  failure the plugin also `DocumentsContract.deleteDocument`s the file the intent
+  already created, so no truncated file survives to be mistaken for a backup.
+- **The MIME allow-list is deliberately wide.** `EXTRA_MIME_TYPES` is
+  `{application/json, application/octet-stream, text/plain}`. It is an
+  allow-list, not a hint: a type missing from it makes the user's own backup
+  *unselectable*, greyed out with no explanation, and which type a given provider
+  reports for a `.glacier.json` is not predictable. The real filter is
+  `validateEnvelope`, which runs on the contents. If a device test finds a fourth
+  type, adding it to that one constant is the whole fix.
+- **All I/O hops back off the main thread.** A `@PluginMethod` body runs on
+  Capacitor's `HandlerThread`, but an `@ActivityCallback` body runs on the *main*
+  thread, where a multi-megabyte read is an ANR. Each callback re-enters
+  `getBridge().execute(...)`. The `PluginCall` handed to a callback can also be
+  `null` after a process restore, so each one guards for it.
+
+`startActivityForResult` already retains the call (`Plugin.java:173-183`) — do
+not call `saveCall`/`releaseCall` by hand.
+
+## Two destinations, one writer (M14)
+
+`ExportFileWriter.write()` gained a third parameter,
+`ExportDestination = 'save' | 'share'`, rather than splitting into two methods.
+There are exactly two destinations forever, and a `save()`/`share()` pair would
+only push the same branch up into `ExportService.export()`.
+`CapacitorExportFileWriter` is now a dispatcher over `DOCUMENT_GATEWAY` and
+`SHARE_GATEWAY` and knows nothing else.
+
+Cancellation is a **status, not a rejection**, everywhere in `core/native`, for
+the same reason `ExportResult` has one: a dismissed picker is an outcome, not a
+failure, and a rejected promise forces every caller into a `catch` whose error
+object is the one place a provider path could leak. `CapacitorDocumentGateway`
+reads `error.code` and never `error.message`.
+
+The two dismissals are not the same event, which is why the writer treats them
+differently. A dismissed *save* dialog means nothing was written, so the export
+reports `cancelled`. A dismissed *share* chooser comes after the file was already
+staged and offered, so the export reports success.
+
+## Sweep before, never after (M14)
+
+A shared export is staged into `Directory.Cache` under `share/`. The previous
+staged file is deleted at the **start** of the next share, and once more at
+startup. There is no delete when `Share.share()` resolves.
+
+That is not laziness. The receiving app's URI grant outlives the chooser: Gmail
+reads the stream when the user hits Send, which can be minutes later. Deleting on
+resolve corrupts exactly the case the feature exists for. There is no callback
+meaning "the receiver has finished" — `EXTRA_CHOSEN_COMPONENT` fires when a
+target is *chosen*, and may not arrive at all. A timer would be arbitrary and
+would not survive process death.
+
+Sweeping at each entry instead bounds the file's life to "until the next share or
+the next launch", never leaves more than one file, and cannot race a reader. The
+startup sweep is chained *inside* `provideStartup()` after `imageGc.sweep()`, not
+registered as a fourth `provideAppInitializer` — the M08 rule.
+
+Staging and sharing sit in two separate `try` blocks. A staging failure means
+nothing was ever offered, and reporting that as a dismissal would tell the user
+they changed their mind.
+
+No manifest change was needed: `AndroidManifest.xml` already declares
+`${applicationId}.fileprovider` and `res/xml/file_paths.xml` already has
+`<cache-path path="." />`, which is what `@capacitor/share` resolves a `file:`
+URL through.
+
+## A BOM makes the two gateways disagree (M14)
+
+`stripBom()` exists because `FileReader.readAsText` strips a UTF-8 BOM per the
+encoding standard while the native read hands back exactly the bytes the document
+had. Without it, a file some desktop editor saved with a BOM imports fine in the
+browser dev server and is rejected as corrupt on a device — and the rejection
+says nothing useful, because `JSON.parse`'s message quotes the offending
+character followed by the user's own note text, which is exactly what must never
+be shown.
+
+## Sharing one note is text, not an envelope (M14)
+
+`noteShareText()` in `src/app/features/notes/note-share.ts` is pure and sits
+outside `NotePrompts` for the usual reason: an Ionic overlay cannot be
+instantiated under jsdom.
+
+Markdown image references are removed whole — `![alt](glacier-img://<id>)`, not
+just the URL, which would leave a bare `![alt]()` behind. `glacier-img://`
+resolves to a file only this app can read, so a shared copy of one is a dead link
+in whatever received it. The id half of the pattern is built from
+`IMAGE_REF_PATTERN.source` rather than a second copy of the rule, per
+`docs/images.md`.
+
+A checklist renders through the existing `checklistToText()`, which is
+**canonical order**. `displayOrder`'s completed-item grouping is display state
+that `docs/checklists.md` says must not leave the editor.
+
+Images themselves are not shareable. Staging decrypted image bytes in the cache
+for an unbounded read window is a second lifecycle to reason about for little
+gain; M14's wording ("share images only when supported by a safe explicit flow")
+permits declining it.
+
 ## Load-bearing rules
 
 - **Never export `search_text`.** It is a derived internal column and the desktop
@@ -479,3 +600,15 @@ colour, pin, label, archive and trash flags, and a byte-identical image file.
   message quotes note text; the import returns a constant string instead.
 - **A successful import must reload `NotebooksStore`, `LabelsStore` and
   `NotesStore`.** Nothing else reloads them.
+- **`DocumentsPlugin.saveInstanceState()` must keep returning `null`.** The
+  inherited one serializes the call options — the entire export — into the
+  Activity bundle.
+- **The document is written with `"wt"`, never `"w"`,** and a failed write
+  deletes the document the intent created.
+- **Only `error.code` is ever read from a plugin rejection**, never
+  `error.message`: a native message carries the provider's path.
+- **The staged share file is deleted before the next share and at startup, never
+  after `Share.share()` resolves.** The receiver reads the stream long after the
+  chooser closes.
+- **`stripBom` stays on the native read path.** `FileReader` strips a BOM and the
+  `ContentResolver` does not, so without it only a device finds the divergence.

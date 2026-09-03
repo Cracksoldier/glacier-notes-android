@@ -39,7 +39,8 @@ export interface ExportedImage {
  * the port would mean maintaining code that differs from the authoritative
  * source. `docs/desktop-audit.md` §11 left Android's adoption of the scoped
  * exports open; the answer is that the contract supports them and the UI does
- * not, until M14 can offer a share sheet.
+ * not — M14 wired a share sheet and still exports only the whole collection,
+ * because a per-note share is text rather than an envelope.
  */
 export type ExportScope =
   | { kind: 'all' }

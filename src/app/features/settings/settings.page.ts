@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import { RouterLink } from '@angular/router';
 import {
   IonButtons,
   IonContent,
@@ -48,6 +49,7 @@ import { NotebooksStore } from '../notebooks/notebooks.store';
     IonTitle,
     IonToggle,
     IonToolbar,
+    RouterLink,
   ],
   template: `
     <ion-header>
@@ -189,6 +191,26 @@ import { NotebooksStore } from '../notebooks/notebooks.store';
         </ion-item>
         <ion-item lines="none">
           <ion-note class="settings__sample">{{ i18n.t('settings.trashAutoPurgeHint') }}</ion-note>
+        </ion-item>
+      </ion-list>
+
+      <ion-list [inset]="true">
+        <ion-list-header>{{ i18n.t('settings.backup') }}</ion-list-header>
+        <ion-item lines="none" [detail]="true" routerLink="/import-export" button="true">
+          <ion-label>{{ i18n.t('settings.backupOpen') }}</ion-label>
+        </ion-item>
+        <ion-item lines="none">
+          <ion-note class="settings__sample">{{ i18n.t('settings.backupHint') }}</ion-note>
+        </ion-item>
+        <ion-item lines="none">
+          <ion-note class="settings__sample">
+            {{ i18n.t('importExport.disclosureUnencrypted') }}
+          </ion-note>
+        </ion-item>
+        <ion-item lines="none">
+          <ion-note class="settings__sample">
+            {{ i18n.t('importExport.disclosureUninstall') }}
+          </ion-note>
         </ion-item>
       </ion-list>
 

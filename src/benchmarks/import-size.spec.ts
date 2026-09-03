@@ -56,7 +56,7 @@ describe('importing a large collection', () => {
           const target = await freshRepositories();
           try {
             const importer = TestBed.inject(ImportService);
-            const file = new File([json], 'bench.glacier.json', { type: 'application/json' });
+            const file = { name: 'bench.glacier.json', text: json };
 
             const inspecting = performance.now();
             const inspected = await importer.inspect(file);
@@ -121,7 +121,7 @@ async function exportOf(size: number): Promise<string> {
       });
     }
 
-    const result = await TestBed.inject(ExportService).exportAll();
+    const result = await TestBed.inject(ExportService).exportAll('save');
     expect(result.status).toBe('saved');
     const [json] = [...repositories.exports.files.values()];
     return json as string;

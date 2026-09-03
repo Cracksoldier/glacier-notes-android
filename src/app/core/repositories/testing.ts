@@ -9,6 +9,8 @@ import { IMAGE_FILE_STORE } from '../images/image-file-store';
 import { MemoryImageFileStore } from '../images/memory-image-file-store';
 import { newId } from '../models/entity-id';
 import type { Note } from '../models/note';
+import { MemoryShareGateway } from '../native/memory-share-gateway';
+import { SHARE_GATEWAY } from '../native/share-gateway';
 import { ImageAssetRepository } from './image-asset.repository';
 import { LabelRepository } from './label.repository';
 import { insertNote } from './note-writes';
@@ -39,6 +41,8 @@ export interface TestRepositories {
   /** Where an export lands, so a spec can assert on what was written — and on
    * the cases where nothing was. */
   exports: MemoryExportFileWriter;
+  /** What was handed to the share sheet. `NotePrompts` needs it provided at all. */
+  shares: MemoryShareGateway;
   /** The notebook migration 001 seeds; every note needs one and this is it. */
   defaultNotebookId: string;
 }
@@ -49,12 +53,14 @@ export async function createTestRepositories(): Promise<TestRepositories> {
   await runMigrations(adapter);
   const files = new MemoryImageFileStore();
   const exports = new MemoryExportFileWriter();
+  const shares = new MemoryShareGateway();
 
   TestBed.configureTestingModule({
     providers: [
       { provide: DATABASE_ADAPTER, useValue: adapter },
       { provide: IMAGE_FILE_STORE, useValue: files },
       { provide: EXPORT_FILE_WRITER, useValue: exports },
+      { provide: SHARE_GATEWAY, useValue: shares },
     ],
   });
 
@@ -67,6 +73,7 @@ export async function createTestRepositories(): Promise<TestRepositories> {
     images: TestBed.inject(ImageAssetRepository),
     files,
     exports,
+    shares,
     defaultNotebookId: await notebooks.getDefaultId(),
   };
 }

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { newId } from '../models/entity-id';
 import type { Note } from '../models/note';
+import type { PickedDocument } from '../native/document-gateway';
 import { createTestRepositories, type TestRepositories } from '../repositories/testing';
 import { ImportService } from './import.service';
 import type { ExportEnvelope, ImportStrategy } from './transfer-contract';
@@ -45,8 +46,8 @@ describe('ImportService', () => {
     await repos.adapter.close();
   });
 
-  function file(json: string, name = 'backup.glacier.json'): File {
-    return new File([json], name, { type: 'application/json' });
+  function file(json: string, name: string | null = 'backup.glacier.json'): PickedDocument {
+    return { name, text: json };
   }
 
   /** Inspect then apply, asserting the inspection got far enough to apply. */

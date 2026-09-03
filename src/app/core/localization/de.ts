@@ -73,6 +73,7 @@ export const de: Record<TranslationKey, string> = {
   'note.color': 'Farbe',
   'note.colorNone': 'Keine Farbe',
   'note.labels': 'Labels',
+  'note.share': 'Teilen',
   'note.archive': 'Archivieren',
   'note.unarchive': 'Aus dem Archiv holen',
   'note.moveToTrash': 'In den Papierkorb',
@@ -150,12 +151,17 @@ export const de: Record<TranslationKey, string> = {
   'importExport.exportHeading': 'Export',
   'importExport.exportHint':
     'Schreibt ein .glacier.json-Archiv mit allen Notizen, Notizbüchern, Labels und Bildern. Glacier Notes auf dem Desktop kann es importieren.',
-  'importExport.exportAction': 'Alle Notizen exportieren',
+  'importExport.exportSave': 'In eine Datei speichern…',
+  'importExport.exportShare': 'Teilen…',
   'importExport.exporting': 'Wird exportiert…',
   'importExport.exportDone': '{fileName} gespeichert ({size}).',
+  'importExport.exportShared': '{fileName} geteilt ({size}).',
   'importExport.exportCounts':
     '{notebooks} Notizbücher · {notes} Notizen · {labels} Labels · {images} Bilder',
-  'importExport.exportLocation': 'Liegt im privaten Ordner dieser App auf dem Gerät.',
+  'importExport.exportSavedWhere':
+    'Dort gespeichert, wo du es gewählt hast. Die Datei liegt nicht in der App.',
+  'importExport.exportSharedWhere':
+    'An die gewählte App übergeben. Hier bleibt nichts, sobald du erneut teilst oder die App neu startest.',
   'importExport.errorMissingImages':
     'Es wurde nichts exportiert: {count} angehängte Bilder fehlen auf diesem Gerät. Die Desktop-App würde eine Datei mit fehlenden Bildern ablehnen.',
   'importExport.errorInvalid':
@@ -167,6 +173,7 @@ export const de: Record<TranslationKey, string> = {
   'importExport.importHint':
     'Liest ein von Glacier Notes geschriebenes .glacier.json-Archiv. Es wird nichts geändert, bis du bestätigst.',
   'importExport.importAction': 'Datei auswählen…',
+  'importExport.importUnnamedFile': 'Die gewählte Datei',
   'importExport.importConfirm': 'Importieren',
   'importExport.importCancel': 'Abbrechen',
   'importExport.importing': 'Wird importiert…',
@@ -185,8 +192,20 @@ export const de: Record<TranslationKey, string> = {
   'importExport.importErrorHeading': 'Diese Datei kann nicht importiert werden.',
   'importExport.importMoreErrors': '{count} weitere Probleme werden nicht angezeigt.',
   'importExport.importErrorRead': 'Die Datei konnte nicht gelesen werden.',
+  'importExport.importErrorTooLarge':
+    'Diese Datei ist zu groß, um auf diesem Gerät gelesen zu werden.',
   'importExport.importErrorApply':
     'Der Import ist fehlgeschlagen, es wurde nichts geändert. Deine Notizen sind unverändert.',
+
+  'importExport.replaceWarningTitle': 'Vorhandene Notizen überschreiben?',
+  'importExport.replaceWarningHint':
+    'Notizen, Notizbücher und Labels mit übereinstimmenden IDs werden durch die aus dieser Datei ersetzt. Das lässt sich nicht rückgängig machen.',
+
+  'importExport.disclosureHeading': 'Vor dem Backup',
+  'importExport.disclosureUnencrypted':
+    'Eine .glacier.json-Datei ist nicht verschlüsselt. Wer sie öffnen kann, kann jede Notiz lesen. Bewahre sie an einem Ort auf, dem du vertraust.',
+  'importExport.disclosureUninstall':
+    'Alles wird nur auf diesem Gerät gespeichert. Wenn du die App deinstallierst, werden alle Notizen und Bilder mit gelöscht.',
 
   'settings.title': 'Einstellungen',
   'settings.appearance': 'Darstellung',
@@ -221,6 +240,10 @@ export const de: Record<TranslationKey, string> = {
   'settings.trashAutoPurgeNever': 'Nie',
   'settings.trashAutoPurgeDays': '{count} Tagen',
   'settings.trashAutoPurgeHint': 'Wird bei jedem Start der App einmal geprüft.',
+
+  'settings.backup': 'Backup',
+  'settings.backupOpen': 'Import und Export',
+  'settings.backupHint': 'Ein .glacier.json-Archiv schreiben oder wieder einlesen.',
 
   'settings.diagnostics': 'Diagnose',
   'settings.databaseFailed':

@@ -215,7 +215,7 @@ describe('an Android export beside the desktop fixture', () => {
     });
     await repos.notes.trash(trashed.id);
 
-    await TestBed.inject(ExportService).exportAll();
+    await TestBed.inject(ExportService).exportAll('save');
     const [json] = [...repos.exports.files.values()];
     android = JSON.parse(json as string) as Record<string, unknown>;
   });
@@ -284,13 +284,16 @@ describe('a round trip through import and back out', () => {
       'src/app/core/import-export/fixtures/desktop-all-v1.glacier.json',
       'utf-8',
     );
-    const inspected = await importer.inspect(
-      new File([fixtureJson], 'desktop-all-v1.glacier.json', { type: 'application/json' }),
-    );
+    const inspected = await importer.inspect({
+      name: 'desktop-all-v1.glacier.json',
+      text: fixtureJson,
+    });
     expect(inspected).toMatchObject({ status: 'ready', hasConflicts: false });
     expect(await importer.apply('preserve')).toMatchObject({ status: 'done' });
 
-    expect(await TestBed.inject(ExportService).exportAll()).toMatchObject({ status: 'saved' });
+    expect(await TestBed.inject(ExportService).exportAll('save')).toMatchObject({
+      status: 'saved',
+    });
     const [json] = [...repos.exports.files.values()];
     android = JSON.parse(json as string) as Record<string, unknown>;
   });

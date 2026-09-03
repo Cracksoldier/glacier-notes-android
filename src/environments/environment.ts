@@ -4,6 +4,7 @@
 // That replacement is what keeps sql.js out of the APK: nothing reachable from
 // `environment.prod.ts` references `sqljs.adapter.ts`, so it is never bundled.
 
+import { inject } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 
 import { CapacitorSqliteAdapter } from '../app/core/database/capacitor-sqlite.adapter';
@@ -15,6 +16,12 @@ import { MemoryExportFileWriter } from '../app/core/filesystem/memory-export-fil
 import { CapacitorImageFileStore } from '../app/core/images/capacitor-image-file-store';
 import type { ImageFileStore } from '../app/core/images/image-file-store';
 import { MemoryImageFileStore } from '../app/core/images/memory-image-file-store';
+import { BrowserDocumentGateway } from '../app/core/native/browser-document-gateway';
+import { BrowserShareGateway } from '../app/core/native/browser-share-gateway';
+import { CapacitorDocumentGateway } from '../app/core/native/capacitor-document-gateway';
+import { CapacitorShareGateway } from '../app/core/native/capacitor-share-gateway';
+import { DOCUMENT_GATEWAY, type DocumentGateway } from '../app/core/native/document-gateway';
+import { SHARE_GATEWAY, type ShareGateway } from '../app/core/native/share-gateway';
 
 export const environment = {
   production: false,
@@ -37,6 +44,16 @@ export function createImageFileStore(): ImageFileStore {
 /** Likewise: in a plain browser an export has nowhere to land but memory. */
 export function createExportFileWriter(): ExportFileWriter {
   return Capacitor.isNativePlatform()
-    ? new CapacitorExportFileWriter()
+    ? new CapacitorExportFileWriter(inject(DOCUMENT_GATEWAY), inject(SHARE_GATEWAY))
     : new MemoryExportFileWriter();
+}
+
+export function createDocumentGateway(): DocumentGateway {
+  return Capacitor.isNativePlatform()
+    ? new CapacitorDocumentGateway()
+    : new BrowserDocumentGateway();
+}
+
+export function createShareGateway(): ShareGateway {
+  return Capacitor.isNativePlatform() ? new CapacitorShareGateway() : new BrowserShareGateway();
 }

@@ -1,4 +1,5 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DatabaseService } from '../../core/database/database.service';
@@ -27,7 +28,10 @@ describe('SettingsPage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SettingsPage],
-      providers: [{ provide: PREFERENCES_ADAPTER, useValue: new MemoryPreferencesAdapter() }],
+      providers: [
+        provideRouter([]),
+        { provide: PREFERENCES_ADAPTER, useValue: new MemoryPreferencesAdapter() },
+      ],
     }).compileComponents();
     repositories = await createTestRepositories();
     notebooks = TestBed.inject(NotebooksStore);

@@ -7,6 +7,8 @@ import { NodeSqliteAdapter } from './database/node-sqlite.adapter';
 import { runMigrations } from './database/migrations/migration-runner';
 import { IMAGE_FILE_STORE } from './images/image-file-store';
 import { MemoryImageFileStore } from './images/memory-image-file-store';
+import { MemoryShareGateway } from './native/memory-share-gateway';
+import { SHARE_GATEWAY } from './native/share-gateway';
 import { MemoryPreferencesAdapter } from './preferences/memory-preferences.adapter';
 import { PREFERENCES_ADAPTER } from './preferences/preferences-adapter';
 import { SETTINGS_STORAGE_KEY } from './preferences/settings.store';
@@ -51,10 +53,12 @@ describe('provideStartup', () => {
   it('purges expired trash against the stored window, not the defaults', async () => {
     await seedTrashedNote('stale', 10);
     await seedTrashedNote('fresh', 3);
+    const shares = new MemoryShareGateway();
     TestBed.configureTestingModule({
       providers: [
         { provide: DATABASE_ADAPTER, useValue: adapter },
         { provide: IMAGE_FILE_STORE, useValue: new MemoryImageFileStore() },
+        { provide: SHARE_GATEWAY, useValue: shares },
         {
           provide: PREFERENCES_ADAPTER,
           useValue: new MemoryPreferencesAdapter({
@@ -69,5 +73,8 @@ describe('provideStartup', () => {
 
     const remaining = await adapter.query<{ id: string }>('SELECT id FROM notes ORDER BY id');
     expect(remaining).toEqual([{ id: 'fresh' }]);
+    // Chained inside provideStartup() rather than registered beside it, so that
+    // a share file left by the previous run is gone before anything can offer it.
+    expect(shares.sweeps).toBe(1);
   });
 });

@@ -4,6 +4,7 @@ import { DatabaseService } from './database/database.service';
 import { IMAGE_FILE_STORE } from './images/image-file-store';
 import { ImageGcService } from './images/image-gc.service';
 import { TrashMaintenanceService } from './maintenance/trash-maintenance.service';
+import { SHARE_GATEWAY } from './native/share-gateway';
 import { SettingsStore } from './preferences/settings.store';
 
 /**
@@ -28,6 +29,7 @@ export function provideStartup(): EnvironmentProviders {
     const images = inject(IMAGE_FILE_STORE);
     const trash = inject(TrashMaintenanceService);
     const imageGc = inject(ImageGcService);
+    const shares = inject(SHARE_GATEWAY);
 
     // Loading preferences, opening the database and creating the image
     // directory are independent, and `DatabaseService.init` deliberately cannot
@@ -35,10 +37,14 @@ export function provideStartup(): EnvironmentProviders {
     return (
       Promise.all([settings.init(), database.init(), images.init()])
         .then(() => trash.runStartupPurge())
-        // Last, so that whatever the purge just freed is collected in the same
+        // Then, so that whatever the purge just freed is collected in the same
         // pass, and so a file written by an attach the app was killed in the
         // middle of does not leak forever.
         .then(() => imageGc.sweep())
+        // Last, and touching nothing above: an export staged for the share sheet
+        // is deliberately not deleted when the share sheet closes, so a relaunch
+        // is what bounds its life. See `CapacitorShareGateway.sweep()`.
+        .then(() => shares.sweep())
     );
   });
 }

@@ -55,7 +55,7 @@ describe('ExportService', () => {
       await create('One');
       await repos.labels.create('Urgent');
 
-      const result = await exporter.exportAll();
+      const result = await exporter.exportAll('save');
 
       expect(result).toMatchObject({
         status: 'saved',
@@ -71,7 +71,7 @@ describe('ExportService', () => {
   it('reports the UTF-8 byte length rather than the string length', async () => {
     await create('Straße');
 
-    const result = await exporter.exportAll();
+    const result = await exporter.exportAll('save');
 
     expect(result.status).toBe('saved');
     if (result.status !== 'saved') return;
@@ -83,7 +83,7 @@ describe('ExportService', () => {
   it('produces a file that validates as an envelope', async () => {
     await create('One', 'Body');
 
-    await exporter.exportAll();
+    await exporter.exportAll('save');
 
     const validation = validateEnvelope(JSON.parse(onlyWrittenFile()[1]));
     expect(validation.ok).toBe(true);
@@ -96,7 +96,7 @@ describe('ExportService', () => {
     await repos.notes.setArchived(archived.id, true);
     await repos.notes.trash(trashed.id);
 
-    const result = await exporter.exportAll();
+    const result = await exporter.exportAll('save');
 
     expect(result).toMatchObject({ status: 'saved', counts: { notes: 3 } });
     const envelope = JSON.parse(onlyWrittenFile()[1]) as {
@@ -113,7 +113,7 @@ describe('ExportService', () => {
     const imageId = await storeImage('AQIDBA==');
     await create('With image', `![x](glacier-img://${imageId})`);
 
-    const result = await exporter.exportAll();
+    const result = await exporter.exportAll('save');
 
     expect(result).toMatchObject({ status: 'saved', counts: { images: 1 } });
     const envelope = JSON.parse(onlyWrittenFile()[1]) as {
@@ -128,7 +128,7 @@ describe('ExportService', () => {
     await storeImage();
     await create('No image');
 
-    const result = await exporter.exportAll();
+    const result = await exporter.exportAll('save');
 
     expect(result).toMatchObject({ status: 'saved', counts: { images: 0 } });
   });
@@ -143,7 +143,7 @@ describe('ExportService', () => {
     await create('With image', `![x](glacier-img://${imageId})`);
     await repos.files.delete(imageId);
 
-    const result = await exporter.exportAll();
+    const result = await exporter.exportAll('save');
 
     expect(result).toEqual({ status: 'missing-images', imageCount: 1 });
     expect(repos.exports.files.size).toBe(0);
@@ -156,17 +156,39 @@ describe('ExportService', () => {
     await repos.images.delete(imageId);
     await create('Still referencing', `![x](glacier-img://${imageId})`);
 
-    const result = await exporter.exportAll();
+    const result = await exporter.exportAll('save');
 
     expect(result).toEqual({ status: 'missing-images', imageCount: 1 });
     expect(repos.exports.files.size).toBe(0);
+  });
+
+  it('passes the destination through and reports it back', async () => {
+    await create('One');
+
+    const result = await exporter.exportAll('share');
+
+    expect(result).toMatchObject({ status: 'saved', destination: 'share' });
+    expect(repos.exports.destinations.get(onlyWrittenFile()[0])).toBe('share');
+  });
+
+  /**
+   * A dismissed save dialog is not a failure, and must not leave a "saved
+   * <file>" line on screen for a file that was never written.
+   */
+  it('reports a dismissed destination as cancelled', async () => {
+    await create('One');
+    vi.spyOn(repos.exports, 'write').mockResolvedValueOnce('cancelled');
+
+    const result = await exporter.exportAll('save');
+
+    expect(result).toEqual({ status: 'cancelled' });
   });
 
   it('reports a storage failure without writing a partial file', async () => {
     await create('One');
     vi.spyOn(repos.exports, 'write').mockRejectedValueOnce(new Error('ENOSPC /data/user/0'));
 
-    const result = await exporter.exportAll();
+    const result = await exporter.exportAll('save');
 
     expect(result).toEqual({ status: 'failed' });
     expect(repos.exports.files.size).toBe(0);
@@ -182,7 +204,7 @@ describe('ExportService', () => {
       checklist: [{ id: newId(), text: 'milk', checked: false, sortOrder: 0 }],
     });
 
-    await exporter.exportAll();
+    await exporter.exportAll('save');
     const [, json] = onlyWrittenFile();
 
     expect(json).not.toContain('search_text');
@@ -194,7 +216,7 @@ describe('ExportService', () => {
   it("writes the desktop's two-space indentation", async () => {
     await create('One');
 
-    await exporter.exportAll();
+    await exporter.exportAll('save');
     const [, json] = onlyWrittenFile();
 
     expect(json).toContain('\n  "format": "glacier-notes-export"');

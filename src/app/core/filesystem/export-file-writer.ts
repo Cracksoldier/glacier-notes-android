@@ -1,22 +1,32 @@
 import { InjectionToken } from '@angular/core';
 
+/** Where the user asked the export to go. There is a button for each. */
+export type ExportDestination = 'save' | 'share';
+
+/** A dismissed system dialog is an outcome, not a failure. */
+export type ExportWriteOutcome = 'written' | 'cancelled';
+
 /**
  * The seam through which an export reaches storage, for the same reason
  * `ImageFileStore` exists: a plugin call inside `ExportService` would make the
- * whole service unrunnable under jsdom, and the write destination is exactly the
- * part M14 replaces.
+ * whole service unrunnable under jsdom.
  *
- * M12 writes app-private files as an internal harness. M14 owns the real
- * destination — the Android save dialog and the share sheet — and will add an
- * implementation here rather than changing `ExportService`.
+ * M14 filled it in. `CapacitorExportFileWriter` is now a dispatcher over the two
+ * gateways in `core/native` — the Android save dialog and the share sheet — and
+ * `ExportService` still knows nothing about either.
  */
 export interface ExportFileWriter {
   /**
-   * Writes UTF-8 text under `fileName`, replacing any previous file of that
-   * name, and answers with a human-readable location for the UI. Rejects when
-   * the write fails, which the caller reports as a storage error.
+   * Puts UTF-8 text where `destination` says, under `fileName`. Resolves
+   * `'cancelled'` when the user backed out of the system dialog, in which case
+   * nothing was written and nothing failed. Rejects only when the write itself
+   * failed, which the caller reports as a storage error.
    */
-  write(fileName: string, contents: string): Promise<void>;
+  write(
+    fileName: string,
+    contents: string,
+    destination: ExportDestination,
+  ): Promise<ExportWriteOutcome>;
 }
 
 export const EXPORT_FILE_WRITER = new InjectionToken<ExportFileWriter>('ExportFileWriter');

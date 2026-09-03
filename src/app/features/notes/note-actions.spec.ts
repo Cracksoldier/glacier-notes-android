@@ -21,10 +21,10 @@ function note(overrides: Partial<Note> = {}): Note {
 }
 
 describe('note actions', () => {
-  it('offers pin, colour, labels, archive and trash on an active note', () => {
+  it('offers pin, colour, labels, share, archive and trash on an active note', () => {
     const actions = noteActionChoices(note(), 'active').map((choice) => choice.action);
 
-    expect(actions).toEqual(['pin', 'color', 'labels', 'archive', 'trash']);
+    expect(actions).toEqual(['pin', 'color', 'labels', 'share', 'archive', 'trash']);
   });
 
   it('flips pin and archive to their inverses when the note is already in that state', () => {
@@ -32,7 +32,18 @@ describe('note actions', () => {
       (choice) => choice.action,
     );
 
-    expect(actions).toEqual(['unpin', 'color', 'labels', 'unarchive', 'trash']);
+    expect(actions).toEqual(['unpin', 'color', 'labels', 'share', 'unarchive', 'trash']);
+  });
+
+  /**
+   * Sharing a trashed note would hand out text the user has already thrown away,
+   * and it is withheld rather than offered and failed — the same rule as the rest
+   * of the trash menu.
+   */
+  it('withholds sharing in the trash', () => {
+    const actions = noteActionChoices(note({ deletedAt: '2026-02-01T00:00:00.000Z' }), 'trashed');
+
+    expect(actions.some((choice) => choice.action === 'share')).toBe(false);
   });
 
   /**

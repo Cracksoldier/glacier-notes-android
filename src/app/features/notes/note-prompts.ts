@@ -3,10 +3,12 @@ import { ActionSheetController, AlertController } from '@ionic/angular';
 
 import { I18nService } from '../../core/localization/i18n.service';
 import type { Note } from '../../core/models/note';
+import { SHARE_GATEWAY } from '../../core/native/share-gateway';
 import type { NoteView } from '../../core/repositories/note-queries';
 import { LabelPrompts } from '../labels/label-prompts';
 import { type NoteAction, noteActionChoices, noteActionFor } from './note-actions';
 import { NOTE_COLORS, type NoteColor } from './note-colors';
+import { noteShareText } from './note-share';
 import { NotesStore } from './notes.store';
 
 /**
@@ -22,6 +24,7 @@ export class NotePrompts {
   private readonly i18n = inject(I18nService);
   private readonly store = inject(NotesStore);
   private readonly labels = inject(LabelPrompts);
+  private readonly shares = inject(SHARE_GATEWAY);
   private readonly alerts = inject(AlertController);
   private readonly actionSheets = inject(ActionSheetController);
 
@@ -73,6 +76,8 @@ export class NotePrompts {
         return this.pickColor(note);
       case 'labels':
         return this.pickLabels(note);
+      case 'share':
+        return this.shareNote(note);
       case 'archive':
         return this.store.setArchived(note.id, true);
       case 'unarchive':
@@ -119,6 +124,17 @@ export class NotePrompts {
     }
     const value = data?.values;
     await this.store.setColor(note.id, value ? (value as NoteColor) : undefined);
+  }
+
+  /**
+   * The outcome is dropped: a dismissal is not an error, and a failure has
+   * nothing to say that would not name the receiving app or a provider path.
+   */
+  private async shareNote(note: Note): Promise<void> {
+    await this.shares.shareText({
+      ...noteShareText(note),
+      dialogTitle: this.i18n.t('note.share'),
+    });
   }
 
   private async pickLabels(note: Note): Promise<void> {

@@ -13,8 +13,10 @@ import {
   writeDefaultNotebookId,
 } from '../repositories/notebook-writes';
 import { insertNote, purgeNote } from '../repositories/note-writes';
+import type { PickedDocument } from '../native/document-gateway';
 import { RepositoryContext } from '../repositories/repository-context';
 import { validateEnvelope } from './envelope-validation';
+import { stripBom } from './strip-bom';
 import {
   detectConflicts,
   envelopeCounts,
@@ -25,7 +27,8 @@ import {
 } from './transfer-contract';
 
 export type ImportInspectResult =
-  | { status: 'ready'; fileName: string; hasConflicts: boolean; counts: ImportCounts }
+  /** `fileName` is null when the document provider reports no display name. */
+  | { status: 'ready'; fileName: string | null; hasConflicts: boolean; counts: ImportCounts }
   | { status: 'invalid'; errors: string[] }
   | { status: 'failed' };
 
@@ -49,9 +52,9 @@ const UNPARSEABLE = 'The file is not valid JSON.';
  * between them exactly as the desktop's main process holds `pendingImport`, so
  * the page never carries a multi-megabyte object in a signal.
  *
- * There is no `canceled` result: an `<input type="file">` the user backs out of
- * never fires `change`, so a cancellation is the page calling `cancel()` and
- * nothing else happening.
+ * There is no `canceled` result, although a cancellation is now a real thing the
+ * document picker reports: `DocumentGateway.open()` answers it one layer out and
+ * the page simply never calls `inspect`. What reaches here is always a document.
  *
  * This is the one service outside `core/repositories` that takes a
  * `RepositoryContext` rather than a repository. It has to: an import is bulk
@@ -67,20 +70,13 @@ export class ImportService {
 
   private pending: ExportEnvelope | null = null;
 
-  /** Vets the file and reports what applying it would do. Writes nothing. */
-  async inspect(file: File): Promise<ImportInspectResult> {
+  /** Vets the document and reports what applying it would do. Writes nothing. */
+  async inspect(document: PickedDocument): Promise<ImportInspectResult> {
     this.pending = null;
-
-    let text: string;
-    try {
-      text = await readAsText(file);
-    } catch {
-      return { status: 'failed' };
-    }
 
     let raw: unknown;
     try {
-      raw = JSON.parse(text);
+      raw = JSON.parse(stripBom(document.text));
     } catch {
       return { status: 'invalid', errors: [UNPARSEABLE] };
     }
@@ -100,7 +96,7 @@ export class ImportService {
     this.pending = validation.envelope;
     return {
       status: 'ready',
-      fileName: file.name,
+      fileName: document.name,
       hasConflicts,
       counts: envelopeCounts(validation.envelope),
     };
@@ -251,14 +247,4 @@ export class ImportService {
       }
     }
   }
-}
-
-/** `FileReader` rather than `Blob.text()`, matching `ImageAttachmentService`. */
-function readAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('read failed'));
-    reader.onload = () => resolve(String(reader.result));
-    reader.readAsText(file);
-  });
 }

@@ -1,9 +1,15 @@
+import { inject } from '@angular/core';
+
 import { CapacitorSqliteAdapter } from '../app/core/database/capacitor-sqlite.adapter';
 import type { DatabaseAdapter } from '../app/core/database/database-adapter';
 import { CapacitorExportFileWriter } from '../app/core/filesystem/capacitor-export-file-writer';
 import type { ExportFileWriter } from '../app/core/filesystem/export-file-writer';
 import { CapacitorImageFileStore } from '../app/core/images/capacitor-image-file-store';
 import type { ImageFileStore } from '../app/core/images/image-file-store';
+import { CapacitorDocumentGateway } from '../app/core/native/capacitor-document-gateway';
+import { CapacitorShareGateway } from '../app/core/native/capacitor-share-gateway';
+import { DOCUMENT_GATEWAY, type DocumentGateway } from '../app/core/native/document-gateway';
+import { SHARE_GATEWAY, type ShareGateway } from '../app/core/native/share-gateway';
 
 export const environment = {
   production: true,
@@ -24,5 +30,13 @@ export function createImageFileStore(): ImageFileStore {
 }
 
 export function createExportFileWriter(): ExportFileWriter {
-  return new CapacitorExportFileWriter();
+  return new CapacitorExportFileWriter(inject(DOCUMENT_GATEWAY), inject(SHARE_GATEWAY));
+}
+
+export function createDocumentGateway(): DocumentGateway {
+  return new CapacitorDocumentGateway();
+}
+
+export function createShareGateway(): ShareGateway {
+  return new CapacitorShareGateway();
 }
