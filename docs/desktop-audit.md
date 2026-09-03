@@ -410,9 +410,13 @@ emit invalid documents. None may contain real personal data.
 
 Recorded rather than decided — these need a product call before the milestones that depend on them.
 
-1. **`preserve` strategy.** Desktop has three import strategies; the Android milestones specify
-   only `copy` and `replace`. `preserve` is the backup-restore path and is arguably the most
-   valuable one on a fresh phone. *Decision needed before M13.*
+1. ~~**`preserve` strategy.**~~ **Decided at M13: ported, but never offered as a choice.** All
+   three strategies exist in `ImportService`; the page mirrors the desktop's own dialog
+   (`transfer-dialog.ts:116-137`), which applies `preserve` automatically when the file has no id
+   conflicts and offers *Add as copies* / *Replace existing* only when it does. That is what makes
+   restoring a backup onto a fresh phone work without asking a question the user has no basis to
+   answer, and it keeps the milestones' two named strategies as the only two the user ever sees.
+   See `docs/import-export.md`.
 2. **Scoped export.** Desktop can export a single notebook or a single note; Android spec §15.2
    mandates only whole-collection export. Per-note export pairs naturally with the Android share
    sheet. *Decision needed before M12/M14.*

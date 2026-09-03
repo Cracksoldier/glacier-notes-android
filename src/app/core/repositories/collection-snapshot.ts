@@ -4,6 +4,7 @@ import type { DatabaseAdapter } from '../database/database-adapter';
 import type { Label } from '../models/label';
 import type { Note } from '../models/note';
 import type { Notebook } from '../models/notebook';
+import { queryImageAssetIds } from './image-queries';
 import { selectLabels } from './label-queries';
 import { queryNotes } from './note-queries';
 import { selectNotebooks } from './notebook-queries';
@@ -61,11 +62,51 @@ export async function readCollectionSnapshot(
   };
 }
 
+/**
+ * Every id already stored, by kind.
+ *
+ * Structurally identical to `ExistingIds` in `transfer-contract.ts`, and declared
+ * again here on purpose: `core/import-export` depends on `core/repositories` and
+ * not the other way round, so importing the type would invert that.
+ */
+export interface CollectionIds {
+  notebookIds: Set<string>;
+  noteIds: Set<string>;
+  labelIds: Set<string>;
+  imageIds: Set<string>;
+}
+
+/**
+ * Same one-turn rule as `readCollectionSnapshot`, and the same reason: an import
+ * decides both whether the file conflicts and whether the store is pristine from
+ * these four sets, and a write landing between two of the reads would let it
+ * decide those two questions about different databases.
+ *
+ * The notes query is unfiltered — a trashed note still owns its id, so a file
+ * carrying it conflicts. That is the desktop's `allNotes()`.
+ */
+export async function readExistingIds(adapter: DatabaseAdapter): Promise<CollectionIds> {
+  const ids = async (sql: string): Promise<Set<string>> => {
+    const rows = await adapter.query<{ id: string }>(sql);
+    return new Set(rows.map((row) => row.id));
+  };
+  return {
+    notebookIds: await ids('SELECT id FROM notebooks'),
+    noteIds: await ids('SELECT id FROM notes'),
+    labelIds: await ids('SELECT id FROM labels'),
+    imageIds: new Set(await queryImageAssetIds(adapter)),
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class CollectionRepository {
   private readonly context = inject(RepositoryContext);
 
   snapshot(): Promise<CollectionSnapshot> {
     return this.context.read('collection.snapshot', readCollectionSnapshot);
+  }
+
+  existingIds(): Promise<CollectionIds> {
+    return this.context.read('collection.existingIds', readExistingIds);
   }
 }

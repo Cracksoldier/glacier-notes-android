@@ -49,6 +49,26 @@ export async function applyNotebookPatch(
   await adapter.run(`UPDATE notebooks SET ${assignments.join(', ')} WHERE id = ?`, [...params, id]);
 }
 
+/**
+ * Overwrites every column of an existing notebook, `created_at` included — the
+ * shape of the desktop's `notebooks.insert`, which replaces the whole object
+ * when the id is already known (`notebook-repo.ts:83-91`).
+ *
+ * An `UPDATE` rather than a delete-then-insert because `notes.notebook_id` is
+ * `ON DELETE RESTRICT`: a notebook that still holds notes cannot be deleted, and
+ * an import replacing one by id must not have to empty it first.
+ */
+export async function replaceNotebookRow(
+  adapter: DatabaseAdapter,
+  notebook: Notebook,
+): Promise<void> {
+  const row = notebookToRow(notebook);
+  await adapter.run(
+    'UPDATE notebooks SET name = ?, color = ?, sort_order = ?, created_at = ?, updated_at = ? WHERE id = ?',
+    [row.name, row.color, row.sort_order, row.created_at, row.updated_at, row.id],
+  );
+}
+
 export async function deleteNotebookRow(adapter: DatabaseAdapter, id: string): Promise<void> {
   await adapter.run('DELETE FROM notebooks WHERE id = ?', [id]);
 }

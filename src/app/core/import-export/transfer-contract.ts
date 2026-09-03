@@ -2,7 +2,7 @@ import { referencedImageIds } from '../models/image-asset';
 import type { Label } from '../models/label';
 import type { Note } from '../models/note';
 import type { Notebook } from '../models/notebook';
-import { nowIso, SCHEMA_VERSION } from '../models/entity-id';
+import { newId, nowIso, SCHEMA_VERSION } from '../models/entity-id';
 
 /**
  * The `.glacier.json` exchange contract, ported from the desktop's
@@ -10,11 +10,10 @@ import { nowIso, SCHEMA_VERSION } from '../models/entity-id';
  * an Android export is byte-compatible with what the desktop already reads, and
  * every difference from that source is a bug rather than a local improvement.
  *
- * What "ported" excludes: the desktop's `detectConflicts`, `remapAsCopies` and
- * `envelopeCounts` are import-side and belong to M13, and the private constants
- * the desktop keeps here (`UUID_PATTERN`, `IMAGE_MIME_TYPES`, `MAX_IMAGE_BYTES`,
- * `IMAGE_REF_PATTERN`, `referencedImageIds`) already exist as public model
- * constants under `core/models` and are imported rather than re-declared.
+ * What "ported" excludes: the private constants the desktop keeps here
+ * (`UUID_PATTERN`, `IMAGE_MIME_TYPES`, `MAX_IMAGE_BYTES`, `IMAGE_REF_PATTERN`,
+ * `referencedImageIds`) already exist as public model constants under
+ * `core/models` and are imported rather than re-declared.
  *
  * What the two apps must agree on is the *set* of keys, not their order: the
  * desktop's `NoteRepo.update` does `{...note, ...patch}`, so an optional key set
@@ -126,5 +125,92 @@ export function collectExport(scope: ExportScope, source: ExportSource): ExportE
     images: images,
     scope,
     ...(scope.kind === 'all' ? { defaultNotebookId: source.defaultNotebookId } : {}),
+  };
+}
+
+// A type alias rather than an interface, so it keeps TypeScript's implicit index
+// signature and can be passed straight to `I18nService.t()` as its params.
+export type ImportCounts = {
+  notebooks: number;
+  notes: number;
+  labels: number;
+  images: number;
+};
+
+/**
+ * All three of the desktop's strategies, although only two are ever offered:
+ * `transfer-dialog.ts:116-137` applies `preserve` itself when a file has no id
+ * conflicts and prompts for `copy` or `replace` when it does. `preserve` is
+ * therefore the restore-a-backup path rather than a choice, which is what
+ * `docs/desktop-audit.md` §11 left open.
+ */
+export type ImportStrategy = 'copy' | 'replace' | 'preserve';
+
+export interface ExistingIds {
+  notebookIds: Set<string>;
+  noteIds: Set<string>;
+  labelIds: Set<string>;
+  imageIds: Set<string>;
+}
+
+/** Whether applying this envelope would overwrite anything already stored. */
+export function detectConflicts(envelope: ExportEnvelope, existing: ExistingIds): boolean {
+  return (
+    envelope.notebooks.some((n) => existing.notebookIds.has(n.id)) ||
+    envelope.notes.some((n) => existing.noteIds.has(n.id)) ||
+    envelope.labels.some((l) => existing.labelIds.has(l.id)) ||
+    envelope.images.some((i) => existing.imageIds.has(i.id))
+  );
+}
+
+/**
+ * A deep copy of the envelope in which every entity has a fresh id and every
+ * cross-reference — note→notebook, note→labels, note→images, and the
+ * `glacier-img://` URLs inside note content — points at it.
+ *
+ * Two things here look like bugs and are not. The content rewrite is a plain
+ * substring replace over the whole body rather than a URL-aware one, so an image
+ * id that appears in prose is rewritten too; porting it faithfully is what makes
+ * an Android copy-import and a desktop copy-import produce the same note.
+ * And a reference to an entity the envelope does not carry is left untouched for
+ * the applier to resolve or drop — a case `validateEnvelope`'s referential
+ * integrity pass has already made unreachable on this side.
+ */
+export function remapAsCopies(envelope: ExportEnvelope): ExportEnvelope {
+  const notebookIds = new Map(envelope.notebooks.map((n) => [n.id, newId()]));
+  const labelIds = new Map(envelope.labels.map((l) => [l.id, newId()]));
+  const imageIds = new Map(envelope.images.map((i) => [i.id, newId()]));
+
+  return {
+    ...envelope,
+    notebooks: envelope.notebooks.map((n) => ({ ...n, id: notebookIds.get(n.id) ?? n.id })),
+    labels: envelope.labels.map((l) => ({ ...l, id: labelIds.get(l.id) ?? l.id })),
+    images: envelope.images.map((i) => ({ ...i, id: imageIds.get(i.id) ?? i.id })),
+    notes: envelope.notes.map((note) => {
+      let content = note.content;
+      for (const [oldId, freshId] of imageIds) {
+        content = content.split(oldId).join(freshId);
+      }
+      return {
+        ...note,
+        id: newId(),
+        notebookId: notebookIds.get(note.notebookId) ?? note.notebookId,
+        labels: note.labels.map((id) => labelIds.get(id) ?? id),
+        imageIds: note.imageIds.map((id) => imageIds.get(id) ?? id),
+        content,
+        ...(note.checklist
+          ? { checklist: note.checklist.map((item) => ({ ...item, id: newId() })) }
+          : {}),
+      };
+    }),
+  };
+}
+
+export function envelopeCounts(envelope: ExportEnvelope): ImportCounts {
+  return {
+    notebooks: envelope.notebooks.length,
+    notes: envelope.notes.length,
+    labels: envelope.labels.length,
+    images: envelope.images.length,
   };
 }

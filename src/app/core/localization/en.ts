@@ -180,6 +180,31 @@ export const en = {
   'importExport.errorInvalid': 'Nothing was exported: the archive failed an internal check.',
   'importExport.errorWrite': 'Could not write the export. Free up some space and try again.',
 
+  // The strategy labels, hints, conflict message and `moreErrors` are the
+  // desktop's `transfer.*` copy verbatim, so both apps describe the same choice
+  // in the same words. The rest is authored here to match that register.
+  'importExport.importHeading': 'Import',
+  'importExport.importHint':
+    'Reads a .glacier.json archive written by Glacier Notes. Nothing is changed until you confirm.',
+  'importExport.importAction': 'Choose a file…',
+  'importExport.importConfirm': 'Import',
+  'importExport.importCancel': 'Cancel',
+  'importExport.importing': 'Importing…',
+  'importExport.importNoConflicts': 'Nothing in this file exists here yet. Everything is added.',
+  'importExport.importConflicts':
+    'Some entries already exist here. Choose how they should be handled.',
+  'importExport.importAddCopies': 'Add as copies',
+  'importExport.importAddCopiesHint': 'All imported items get new IDs. Nothing is overwritten.',
+  'importExport.importReplaceById': 'Replace existing',
+  'importExport.importReplaceByIdHint': 'Items with matching IDs are overwritten (backup restore).',
+  'importExport.importDone':
+    'Imported {notebooks} notebooks · {notes} notes · {labels} labels · {images} images.',
+  'importExport.importErrorHeading': 'This file cannot be imported.',
+  'importExport.importMoreErrors': '{count} further problems are not shown.',
+  'importExport.importErrorRead': 'The file could not be read.',
+  'importExport.importErrorApply':
+    'The import failed and nothing was changed. Your notes are as they were.',
+
   'settings.title': 'Settings',
   'settings.appearance': 'Appearance',
   'settings.theme': 'Theme',

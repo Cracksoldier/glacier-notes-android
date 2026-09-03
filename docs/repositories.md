@@ -87,10 +87,12 @@ run afterwards (the caller has already been told it did not happen), and the
 tail must chain off the *previous* operation rather than off the abandoned one,
 or a merely-slow operation would end up running alongside its successor.
 
-M12's import is the case most likely to meet the timeout legitimately. It should
+M13's import is the case most likely to meet the timeout legitimately. It should
 raise the constant rather than trip it — but note that a bulk import which
 composes the `*-writes.ts` primitives inside one `write()`, as it must anyway,
-is a single operation and never queues behind itself.
+is a single operation and never queues behind itself. Measured at M13: 10 000
+notes and 7.3 MB apply in ~0.4 s under `node:sqlite`, so the constant stands
+(`docs/import-export.md`).
 
 ## The read path: four statements, one window
 

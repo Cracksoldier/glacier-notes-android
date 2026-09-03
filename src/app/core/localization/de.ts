@@ -163,6 +163,31 @@ export const de: Record<TranslationKey, string> = {
   'importExport.errorWrite':
     'Der Export konnte nicht geschrieben werden. Gib Speicherplatz frei und versuche es erneut.',
 
+  'importExport.importHeading': 'Import',
+  'importExport.importHint':
+    'Liest ein von Glacier Notes geschriebenes .glacier.json-Archiv. Es wird nichts geändert, bis du bestätigst.',
+  'importExport.importAction': 'Datei auswählen…',
+  'importExport.importConfirm': 'Importieren',
+  'importExport.importCancel': 'Abbrechen',
+  'importExport.importing': 'Wird importiert…',
+  'importExport.importNoConflicts':
+    'Nichts aus dieser Datei ist hier bereits vorhanden. Alles wird hinzugefügt.',
+  'importExport.importConflicts':
+    'Einige Einträge sind hier bereits vorhanden. Wähle, wie damit umgegangen werden soll.',
+  'importExport.importAddCopies': 'Als Kopien hinzufügen',
+  'importExport.importAddCopiesHint':
+    'Alle importierten Einträge erhalten neue IDs. Nichts wird überschrieben.',
+  'importExport.importReplaceById': 'Vorhandene ersetzen',
+  'importExport.importReplaceByIdHint':
+    'Einträge mit übereinstimmenden IDs werden überschrieben (Backup-Wiederherstellung).',
+  'importExport.importDone':
+    '{notebooks} Notizbücher · {notes} Notizen · {labels} Labels · {images} Bilder importiert.',
+  'importExport.importErrorHeading': 'Diese Datei kann nicht importiert werden.',
+  'importExport.importMoreErrors': '{count} weitere Probleme werden nicht angezeigt.',
+  'importExport.importErrorRead': 'Die Datei konnte nicht gelesen werden.',
+  'importExport.importErrorApply':
+    'Der Import ist fehlgeschlagen, es wurde nichts geändert. Deine Notizen sind unverändert.',
+
   'settings.title': 'Einstellungen',
   'settings.appearance': 'Darstellung',
   'settings.theme': 'Design',

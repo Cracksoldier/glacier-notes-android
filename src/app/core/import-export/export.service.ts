@@ -7,16 +7,16 @@ import { CollectionRepository } from '../repositories/collection-snapshot';
 import { ImageAssetRepository } from '../repositories/image-asset.repository';
 import { validateEnvelope } from './envelope-validation';
 import { exportFileName } from './export-filename';
-import { collectExport, type ExportedImage, type ExportScope } from './transfer-contract';
+import {
+  collectExport,
+  envelopeCounts,
+  type ExportedImage,
+  type ExportScope,
+  type ImportCounts,
+} from './transfer-contract';
 
-// A type alias rather than an interface, so it keeps TypeScript's implicit index
-// signature and can be passed straight to `I18nService.t()` as its params.
-export type ExportCounts = {
-  notebooks: number;
-  notes: number;
-  labels: number;
-  images: number;
-};
+/** The desktop counts an envelope the same way in both directions. */
+export type ExportCounts = ImportCounts;
 
 export type ExportResult =
   | { status: 'saved'; fileName: string; byteLength: number; counts: ExportCounts }
@@ -94,12 +94,7 @@ export class ExportService {
       }
 
       json = JSON.stringify(envelope, null, 2);
-      counts = {
-        notebooks: envelope.notebooks.length,
-        notes: envelope.notes.length,
-        labels: envelope.labels.length,
-        images: envelope.images.length,
-      };
+      counts = envelopeCounts(envelope);
     } catch {
       // Never log the error: a filesystem message can carry a path, and a
       // database one can carry bound note text.

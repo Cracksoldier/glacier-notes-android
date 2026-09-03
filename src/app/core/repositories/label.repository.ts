@@ -5,6 +5,7 @@ import type { LabelRow } from '../database/rows';
 import { newId } from '../models/entity-id';
 import type { Label } from '../models/label';
 import { selectLabels } from './label-queries';
+import { deleteLabelRow, insertLabel, renameLabel } from './label-writes';
 import { requireLabelExists } from './note-writes';
 import { RepositoryContext } from './repository-context';
 import { EntityNotFoundError } from './repository-errors';
@@ -42,7 +43,7 @@ export class LabelRepository {
   create(name: string): Promise<Label> {
     return this.context.write('labels.create', async (adapter) => {
       const label: Label = { id: newId(), name };
-      await adapter.run('INSERT INTO labels (id, name) VALUES (?, ?)', [label.id, label.name]);
+      await insertLabel(adapter, label);
       return label;
     });
   }
@@ -50,7 +51,7 @@ export class LabelRepository {
   rename(id: string, name: string): Promise<Label> {
     return this.context.write('labels.rename', async (adapter) => {
       await requireLabelExists(adapter, id);
-      await adapter.run('UPDATE labels SET name = ? WHERE id = ?', [name, id]);
+      await renameLabel(adapter, id, name);
       return { id, name };
     });
   }
@@ -64,7 +65,7 @@ export class LabelRepository {
   delete(id: string): Promise<void> {
     return this.context.write('labels.delete', async (adapter) => {
       await requireLabelExists(adapter, id);
-      await adapter.run('DELETE FROM labels WHERE id = ?', [id]);
+      await deleteLabelRow(adapter, id);
     });
   }
 }

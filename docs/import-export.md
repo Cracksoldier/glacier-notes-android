@@ -1,15 +1,19 @@
-# Import and export (M12)
+# Import and export (M12, M13)
 
-M12 makes the app produce `.glacier.json` files that the **existing Glacier
-Notes desktop app imports without modification**. That is the whole goal, and it
-is the reason almost every decision below points at "because the desktop does",
-including the places where doing so is not what a greenfield design would pick.
+M12 and M13 make the app exchange `.glacier.json` files with the **existing
+Glacier Notes desktop app, without modification on either side**. That is the
+whole goal, and it is the reason almost every decision below points at "because
+the desktop does", including the places where doing so is not what a greenfield
+design would pick.
 
-M12 ships the *export* half. Import — reading a file the user picked, detecting
-conflicts, and applying it — is M13. The Android save dialog and share sheet are
-M14; what M12 writes goes into the app's private directory as a harness.
+M12 shipped the *export* half; M13 the *import* half — reading a file the user
+picked, validating it, previewing it, and applying it under both conflict
+strategies. The Android save dialog, share sheet and document picker are M14;
+until then an export goes into the app's private directory and an import comes
+from a plain `<input type="file">`.
 
 This document records the reasoning a reader cannot recover from the code.
+Sections below are M12 unless they say otherwise.
 
 ## The port is verbatim, and that is a constraint rather than a shortcut
 
@@ -19,11 +23,8 @@ that source is a bug, not a local improvement.** If a future change makes the
 Android output cleverer than the desktop's, it makes the two apps stop
 interoperating and the milestone's only acceptance criterion fails.
 
-"Verbatim" excludes exactly two things:
+"Verbatim" excludes exactly one thing:
 
-- **Import-side functions.** `detectConflicts`, `remapAsCopies` and
-  `envelopeCounts` live in the same desktop file but do nothing for an exporter.
-  They are M13's, along with the applier.
 - **Constants the desktop keeps private.** `UUID_PATTERN`, `IMAGE_MIME_TYPES`,
   `MAX_IMAGE_BYTES`, `IMAGE_REF_PATTERN` and `referencedImageIds()` are file-local
   in `transfer-core.ts`. Here they already exist as public model constants in
@@ -32,9 +33,19 @@ interoperating and the milestone's only acceptance criterion fails.
   reference" — precisely the hazard `docs/images.md` warns about — so they are
   imported.
 
-`validateEnvelope` is in scope for M12 even though nothing imports yet, because
-the exporter needs it as a self-check and the contract specs need a real parser
-to assert against.
+`validateEnvelope` shipped with M12 although nothing imported yet, because the
+exporter needs it as a self-check and the contract specs need a real parser to
+assert against. M13 added `detectConflicts`, `remapAsCopies` and
+`envelopeCounts` from the same desktop file, completing the port.
+
+Two things in `remapAsCopies` look like bugs and are not, so do not "fix" them:
+it rewrites image references with `content.split(oldId).join(freshId)`, a plain
+substring replace over the whole body rather than a URL-aware one; and a
+reference to an entity *not* in the envelope is left pointing at its original
+id. Both are what the desktop does, and porting them faithfully is what makes an
+Android copy-import and a desktop copy-import of the same file produce the same
+notes. The second is unreachable for us anyway — `validateEnvelope`'s
+referential-integrity pass rejects such a file before an import can see it.
 
 ## The wire format
 
@@ -215,6 +226,36 @@ If a real collection ever exceeds what the WebView can hold, the fix is a
 per-image side-car format, which is a **new format decision** and needs the
 desktop to agree first — not a local change.
 
+### Practical import size (M13)
+
+The same ceiling applies to the import, twice over: the file arrives as one
+string from `FileReader`, `JSON.parse` turns it into one object graph, and for
+`copy` `remapAsCopies` deep-copies that graph — so the copy path peaks at
+roughly **twice the envelope**, plus the base64 of every image again as it is
+handed to the file store. There is no per-file size limit in the code; the limit
+is what a device can allocate. `MAX_IMAGE_BYTES` (10 MB) still bounds each
+individual image, which is what stops a single entry from dominating.
+
+`src/benchmarks/import-size.spec.ts` measures the rest, `npm run test:bench`
+(node:sqlite on a desktop, so device figures will be several times larger):
+
+| Notes | Envelope | `inspect` | `apply` preserve | `apply` copy |
+| --- | --- | --- | --- | --- |
+| 1 000 | 2.3 MB | 17 ms | 30 ms | 40 ms |
+| 5 000 | 4.5 MB | 36 ms | 179 ms | 188 ms |
+| 10 000 | 7.3 MB | 53 ms | 390 ms | 411 ms |
+
+Each case carries 20 images of ~64 KB after base64. Time is linear in the note
+count and `copy` costs ~5% over `preserve`, which is the remap.
+
+The number that matters is `apply` against `QUEUE_STALL_TIMEOUT_MS` (30 s),
+because the whole apply is a **single** `write()` turn and a reader queued behind
+it waits the full duration. At 10 000 notes the margin is ~75×, so even a slow
+device is nowhere near it. If a future collection ever gets close, raise the
+constant rather than split the transaction — `docs/repositories.md` names an
+import as exactly the operation that may legitimately need this, and splitting
+it would give up the all-or-nothing rollback that makes an import safe.
+
 ## `Directory.Data` is a harness, not a destination
 
 `CapacitorExportFileWriter` writes to `Directory.Data`
@@ -227,6 +268,128 @@ implementation behind the same token; `ExportService` does not change. The seam
 exists for the same reason `ImageFileStore` does — a plugin call inside the
 service would make it unrunnable under jsdom.
 
+## Import is two phases, because the desktop's is (M13)
+
+`ImportService.inspect(file)` validates and remembers; `apply(strategy)` writes;
+`cancel()` forgets. That is the desktop's `transfer:importInspect` /
+`transfer:importApply` IPC pair, and the split is not cosmetic: the user has to
+be told what is in the file and whether it collides *before* anything is
+touched, and the answer to "does it collide" needs the database.
+
+The validated envelope is held in a private `pending` field, exactly as the
+desktop's main process holds `pendingImport`. It is deliberately **not** in a
+signal: it is a multi-megabyte object graph, and a signal would put it in change
+detection and keep it alive in the component tree. The page holds only the
+counts and the flags.
+
+There is no `canceled` status anywhere. An `<input type="file">` the user backs
+out of never fires `change`, so a cancelled pick is the page doing nothing;
+`cancel()` exists for the explicit Cancel button on the preview.
+
+A parse failure returns a **constant** message rather than the thrown one. V8's
+`JSON.parse` errors quote the offending token, which in a notes file is a
+character of somebody's note text — the M12 rule that no catch block may log its
+error extends to not putting it on screen either.
+
+## `preserve` is a behaviour, not a radio button (M13)
+
+The desktop ships three strategies and so do we, but its own dialog
+(`transfer-dialog.ts:116-137`) only ever *offers* two. When the file has no id
+conflicts it applies `preserve` silently; the *Add as copies* / *Replace
+existing* choice appears only when there is something to overwrite. The Android
+page mirrors that exactly.
+
+This is what makes "restore a backup onto a fresh phone" work: there is nothing
+to conflict with, so the user is not asked a question they have no basis to
+answer, and the collection comes back with its original ids and timestamps.
+
+`preserve` additionally does one thing the other two never do — an **exact
+restore**. When the store is pristine (the seeded notebook, nothing else), the
+scope is `all`, and the envelope names a `defaultNotebookId`, the import adopts
+that default and deletes the local notebooks the file does not carry. That is
+the Android shape of the desktop's `notebooks.replaceAll(...)`. Two orderings
+are load-bearing there: `writeDefaultNotebookId` runs **before** the deletes,
+because `app_state.default_notebook_id` is `ON DELETE SET NULL` and deleting
+first would blank it; and `pristine` is what guarantees no note exists to trip
+`notes.notebook_id`'s `ON DELETE RESTRICT`.
+
+## An imported image with a known id keeps its local bytes (M13)
+
+This is a **deliberate deviation** from the desktop, whose `ImageStore.addWithId`
+overwrites unconditionally.
+
+A UUID identifies one asset. If the id is already here, the bytes are already
+here, and rewriting them can only replace a good file with an identical one — or
+with a corrupted one, if the envelope's base64 is damaged in a way the validator
+did not catch. So the import skips the write when the row exists *and*
+`files.read(id)` returns something. When the row exists but the file is gone, it
+writes: that is repairing an orphaned row, not overwriting a user's image.
+
+The consequence is the property that makes the whole rollback story simple:
+**every file an import writes is either brand-new or a repair of a missing one,
+so no staged write can destroy an existing file.**
+
+## Staging, rollback, and the two crash windows (M13)
+
+The database side of `apply` is one `context.write('import.apply', …)` callback
+composing `*-writes.ts` primitives — notebooks, then the exact-restore default,
+then labels, then images, then notes, then the prior-image collection. It is a
+single transaction, so any throw rolls all of it back.
+
+Files cannot join that transaction, so two id arrays live *outside* the callback:
+
+- **`staged`** — every file the import wrote. On a throw, the transaction has
+  already rolled back and these files are deleted. Safe by the section above:
+  none of them replaced anything.
+- **`collected`** — image rows the `replace` strategy garbage-collected. These
+  drain **after** the commit, rows first and files second, per `docs/images.md`.
+
+The prior-image collection runs *after* the notes are re-inserted, not before.
+`purgeNote` returns what the old note referenced, but an image the replacement
+still uses must survive — running the `unreferenced` query only once the new
+notes are in the table is what makes the predicate answer that correctly.
+
+Both crash windows are the ones the startup sweep already covers: bytes written
+but the commit never reached leaves an orphan file, and a deleted row whose file
+outlived it is picked up by `ImageGcService.sweep()`. M13 needs nothing new for
+either, and `discard()` swallows per-file delete errors for the same reason —
+a leftover file is a sweep away, and there is no better answer at that point.
+
+## `ImportService` is the one service outside `core/repositories` that injects `RepositoryContext` (M13)
+
+Everything else in the app reaches persistence through a repository, and that
+rule stands. The import cannot: `docs/repositories.md` forbids calling repository
+methods in a loop for bulk work, because each call is its own queue turn and its
+own transaction — ten thousand notes would be ten thousand transactions and a
+partial import on any failure. It also has to interleave *file* writes with those
+database writes inside the same unit of work, which no repository can express.
+
+So it composes the primitives directly inside one `write()`. That is the sanctioned
+exception the repository doc describes, and it is why M13 extracted
+`label-writes.ts`, `image-writes.ts`, `image-queries.ts` and
+`replaceNotebookRow` — the note and notebook primitives already existed. The
+extraction was behaviour-preserving; the repositories now call the same functions.
+
+Note that this is `RepositoryContext`, not `DATABASE_ADAPTER`. The queue is not
+bypassed — it is exactly what a long import must go through.
+
+## The page reloads the stores itself (M13)
+
+After a successful apply the page awaits `NotebooksStore.load()`,
+`LabelsStore.load()` and `NotesStore.load()`, as the desktop does at
+`transfer-dialog.ts:158-161`.
+
+This is not optional and not defensive. Per `docs/markdown-and-editor.md` the
+note list deliberately does **not** reload on re-enter, and per `docs/notebooks.md`
+`NotebooksStore` is loaded once for the whole session and caches the default
+notebook id — which an exact restore changes. Without the three explicit reloads
+an import appears to do nothing until the app restarts.
+
+The validator diagnostics are safe to render, and this was checked rather than
+assumed: they name array indices, ids and field names only, never note content.
+The page still bounds the list at five with an "N more" line, ported from the
+desktop's error step.
+
 ## The desktop fixture
 
 `src/app/core/import-export/fixtures/desktop-all-v1.glacier.json` is the only
@@ -235,9 +398,13 @@ the port is a port. It was produced by the **desktop's own** `collectExport` ove
 its own JSON stores, with the same `readImage` closure `electron/export-import.ts`
 passes for `transfer:exportData`, from desktop commit `e217a7a`.
 
-`desktop-fixture.spec.ts` asserts two things against it: this app accepts what
-the desktop writes, and this app's own output uses the same fields per entity
-kind.
+`desktop-fixture.spec.ts` asserts three things against it: this app accepts what
+the desktop writes, this app's own output uses the same fields per entity kind,
+and — since M13 — the loop closes. The round-trip test imports the fixture into
+an empty database, exports, and compares entity by entity including ids and
+timestamps. That is a stronger claim than the key-set assertions above it,
+because it also pins the values an import is required to preserve rather than
+merely the shape.
 
 ### Regenerating it
 
@@ -298,3 +465,17 @@ colour, pin, label, archive and trash flags, and a byte-identical image file.
   which makes divergence more expensive, not less.
 - **The key set is the contract; key order is not.** Do not write a
   byte-comparison against a desktop file.
+- **The whole import is one `write()` turn.** Do not split it for speed; the
+  all-or-nothing rollback is the point. Raise `QUEUE_STALL_TIMEOUT_MS` instead.
+- **A file the import writes must never replace an existing one.** The known-id
+  skip is what guarantees it, and it is what makes deleting the staged files a
+  sufficient undo. Anything that makes an import overwrite bytes has to bring a
+  real staging area with it.
+- **The prior-image GC runs after the notes are re-inserted**, or `replace`
+  deletes images the incoming notes still reference.
+- **`writeDefaultNotebookId` runs before the exact-restore deletes** — the FK is
+  `ON DELETE SET NULL`.
+- **No parser or storage error text reaches the UI or a log.** A `JSON.parse`
+  message quotes note text; the import returns a constant string instead.
+- **A successful import must reload `NotebooksStore`, `LabelsStore` and
+  `NotesStore`.** Nothing else reloads them.

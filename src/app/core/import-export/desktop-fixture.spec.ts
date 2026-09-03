@@ -6,6 +6,7 @@ import { newId } from '../models/entity-id';
 import { createTestRepositories, type TestRepositories } from '../repositories/testing';
 import { validateEnvelope } from './envelope-validation';
 import { ExportService } from './export.service';
+import { ImportService } from './import.service';
 
 /**
  * `fixtures/desktop-all-v1.glacier.json` was produced by the **desktop app's own**
@@ -262,5 +263,54 @@ describe('an Android export beside the desktop fixture', () => {
     expect((android['labels'] as { name: string }[]).map((value) => value.name)).toEqual(
       desktop.labels.map((value) => value.name),
     );
+  });
+});
+
+/**
+ * The loop closed: the desktop's file goes in, this app's file comes out. Only
+ * `exportedAt` may differ, so everything else is compared entity by entity —
+ * which is stronger than the key-set assertions above, because it also pins the
+ * ids and timestamps an import is required to preserve.
+ */
+describe('a round trip through import and back out', () => {
+  let repos: TestRepositories;
+  let android: Record<string, unknown>;
+
+  beforeEach(async () => {
+    repos = await createTestRepositories();
+    const importer = TestBed.inject(ImportService);
+
+    const fixtureJson = readFileSync(
+      'src/app/core/import-export/fixtures/desktop-all-v1.glacier.json',
+      'utf-8',
+    );
+    const inspected = await importer.inspect(
+      new File([fixtureJson], 'desktop-all-v1.glacier.json', { type: 'application/json' }),
+    );
+    expect(inspected).toMatchObject({ status: 'ready', hasConflicts: false });
+    expect(await importer.apply('preserve')).toMatchObject({ status: 'done' });
+
+    expect(await TestBed.inject(ExportService).exportAll()).toMatchObject({ status: 'saved' });
+    const [json] = [...repos.exports.files.values()];
+    android = JSON.parse(json as string) as Record<string, unknown>;
+  });
+
+  afterEach(async () => {
+    await repos.adapter.close();
+  });
+
+  it('writes back every entity the desktop wrote, ids and times included', () => {
+    const desktop = fixture as Record<string, unknown>;
+    const byId = (values: Record<string, unknown>[]) =>
+      [...values].sort((a, b) => String(a['id']).localeCompare(String(b['id'])));
+
+    for (const kind of ['notebooks', 'notes', 'labels', 'images'] as const) {
+      expect(byId(android[kind] as Record<string, unknown>[])).toEqual(
+        byId(desktop[kind] as Record<string, unknown>[]),
+      );
+    }
+    expect(android['defaultNotebookId']).toBe(desktop['defaultNotebookId']);
+    expect(android['scope']).toEqual(desktop['scope']);
+    expectKnownKeysThroughout(android);
   });
 });
