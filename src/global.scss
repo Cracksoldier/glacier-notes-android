@@ -185,6 +185,19 @@ ion-alert {
   --ion-color-primary: var(--glacier-accent-text);
 }
 
+// Text that only the screen reader sees. `aria-label` is not a substitute:
+// Chromium drops an `aria-label`-derived name when it maps a control to a
+// checkable Android node, and ignores it entirely on a role-less element, so
+// two controls (docs/hardening.md §7) must carry their name as real content.
+.glacier-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 // The note colour picker's swatches. Ionic renders overlays outside any
 // component's style scope, so these cannot live in `note-prompts.ts`'s owner.
 .note-color-alert {

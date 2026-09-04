@@ -38,8 +38,12 @@ import {
       <ion-reorder-group [disabled]="false" (ionItemReorder)="onReorder($event)">
         @for (item of displayed(); track item.id; let i = $index) {
           <div class="checklist__row" role="listitem">
-            <ion-reorder class="checklist__handle" [attr.aria-label]="i18n.t('checklist.dragToReorder')">
+            <!-- ion-reorder exposes no ARIA role, and a name is prohibited on a
+                 role-less element, so an aria-label here is silently dropped.
+                 The handle must carry hidden text instead. -->
+            <ion-reorder class="checklist__handle">
               <fa-icon [icon]="gripIcon" />
+              <span class="glacier-sr-only">{{ i18n.t('checklist.dragToReorder') }}</span>
             </ion-reorder>
 
             <input

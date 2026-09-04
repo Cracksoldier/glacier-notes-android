@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 12 (API 31) and above.
+
+    `android:allowBackup="false"` alone does not express the policy this app
+    wants. From API 31 it stops cloud backup but leaves device-to-device transfer
+    running, so the exclusions below are what actually block the upload. Below
+    API 31 the attribute still covers everything, and D2D transfer does not exist
+    there, so no `fullBackupContent` companion file is needed at minSdk 24.
+
+    Cloud backup is refused outright: the collection is local-only by design and
+    the only sanctioned way out is an explicit .glacier.json export.
+
+    Device-to-device transfer is left unrestricted on purpose. Both ends are
+    devices the user is holding, nothing reaches a Google server, and a user
+    replacing a phone keeps their notes. See docs/hardening.md §2.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="file" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer />
+</data-extraction-rules>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Debug builds only. Capacitor livereload (`cap run android` with the livereload
+    and external flags) serves the web assets from a dev server on the host, which
+    the WebView cannot reach without INTERNET.
+
+    This must never move to src/main: the shipping app makes no network request,
+    and the absent permission is the outermost of the four layers that guarantee
+    it (docs/hardening.md §3). Inspect the *release* merged manifest when checking
+    the network posture — the debug one deliberately still has this line.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

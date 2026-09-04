@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -37,5 +39,20 @@
 
     <!-- Permissions -->
 
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!--
+        INTERNET is declared in src/debug only, so that Capacitor livereload can
+        reach the dev server on the host. The release APK holds no network
+        permission at all; see docs/hardening.md §1.
+
+        VIBRATE arrives from @capacitor/haptics, which Ionic Core calls for the
+        checklist drag-reorder feedback. It is kept deliberately.
+
+        androidx.biometric, pulled in transitively by @capacitor-community/sqlite,
+        declares the two below. The app has no biometric or encrypted-database
+        feature and must not ask for them. A plugin upgrade can reintroduce the
+        permissions with no error, so re-inspect the merged release manifest after
+        one — the markers only silence what is there now.
+    -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" tools:node="remove" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" tools:node="remove" />
 </manifest>

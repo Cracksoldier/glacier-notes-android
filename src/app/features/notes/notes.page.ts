@@ -58,12 +58,15 @@ import { NotesStore } from './notes.store';
         </ion-buttons>
         <ion-title>{{ title() }}</ion-title>
         <ion-buttons slot="end">
+          <!-- The name is hidden text rather than an aria-label, because
+               aria-pressed makes Chromium map this to an Android ToggleButton,
+               which drops an aria-label-derived name. -->
           <ion-button
             (click)="toggleLayout()"
-            [attr.aria-label]="i18n.t('a11y.noteLayout')"
             [attr.aria-pressed]="settings.noteLayout() === 'grid'"
           >
             <fa-icon [icon]="settings.noteLayout() === 'grid' ? gridIcon : listIcon" />
+            <span class="glacier-sr-only">{{ i18n.t('a11y.noteLayout') }}</span>
           </ion-button>
           <!-- The notebook or label travels as a query parameter so the search
                page can offer to narrow to it; /search stays one route. -->

@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    The one directory the app ever hands to another app: the staged export that
+    `CapacitorShareGateway` writes before `Share.share()`. It is `SHARE_DIR` in
+    src/app/core/native/capacitor-share-gateway.ts; renaming that constant
+    without renaming this path makes `FileProvider.getUriForFile` throw, and the
+    gateway reports the failure as an ordinary dismissal.
+
+    Capacitor's scaffold also mapped `<external-path path="." />`, the whole of
+    shared external storage. Nothing grants a URI under it, so it was removed
+    rather than left as reachable surface.
+-->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
-    <cache-path name="my_cache_images" path="." />
+    <cache-path name="shared_exports" path="share/" />
 </paths>
