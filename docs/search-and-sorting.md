@@ -234,7 +234,7 @@ one component that owns rendering, so the notes, archive, trash and search pages
 all get it with no change of their own.
 
 CDK virtual scroll was the alternative and does not fit: it needs uniform item
-heights and its own scroll viewport, where this list is a `columns: 240px`
+heights and its own scroll viewport, where this list is a multi-column
 masonry inside somebody else's `ion-content`. `ion-infinite-scroll` resolves its
 scroll host by walking up to an ancestor `ion-content`, which this component does
 not own either.

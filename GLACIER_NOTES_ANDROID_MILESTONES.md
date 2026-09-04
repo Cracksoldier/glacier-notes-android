@@ -145,6 +145,7 @@ Run Gradle commands from the generated Android project directory. Do not assume 
 | M13 | Desktop-compatible import and both conflict strategies | M12 |
 | M14 | Android document pickers, share sheets, and backup UX | M12, M13 |
 | M15 | Privacy, resilience, accessibility, and Android hardening | M03, M10, M11, M13, M14 |
+| M15A | Note-list grid layout on phone-sized screens | M06, M11, M15 |
 | M16 | Signed APK release, upgrade verification, and final acceptance | All previous milestones |
 
 Milestones may only run concurrently when their prerequisites, owned files, and acceptance criteria do not overlap. Sequential implementation is the default.
@@ -1190,7 +1191,69 @@ Harden the complete application for offline, private, reliable Android usage bef
 
 > Implement milestone M15 only. Harden the finished offline Android application by reviewing release permissions, disabling unapproved Android cloud backup, auditing logs and Markdown/import security, validating accessibility/localization, and testing insufficient storage, lifecycle interruptions, larger datasets, and failure recovery. Do not introduce locks, encryption, analytics, or cloud services.
 
-## 21. M16 — Signed APK release, upgrade verification, and final acceptance
+## 21. M15A — Note-list grid layout on phone-sized screens
+
+### Goal
+
+Make the grid/list layout toggle produce a visibly different layout on a portrait phone, which is the application's only shipping form factor.
+
+### Prerequisites
+
+- M06 responsive note list and persisted layout preference.
+- M11 note-list render window and sorting.
+- M15 accessibility and hardening pass.
+
+### Tasks
+
+- Establish the note-list column count explicitly instead of deriving it from the desktop's fixed column width, which resolves to a single column at phone-portrait widths and makes the toggle a no-op.
+- Render two columns in grid mode on phone-sized portrait screens.
+- Continue to widen to additional columns where the available width supports them.
+- Choose the crossover between the forced and width-derived rules so that the column count never decreases as the viewport grows.
+- Preserve the desktop masonry card flow and the pinned/others grouping.
+- Keep note-card contents — thumbnails, labels, titles, checklist rows, rendered Markdown — inside the card at half width.
+- Verify the growing render window still pages in under a multi-column layout.
+- Apply and verify the behavior on every screen that renders the shared note list.
+- Verify the layout at the largest supported system font scale.
+- Record the deviation from the desktop's width-driven masonry and the reason for it.
+
+### Out of scope
+
+- Changing list-mode layout.
+- A user-configurable column count or column-width setting.
+- Replacing the masonry flow with a fixed-row grid.
+- Reopening desktop visual parity for anything beyond the column count.
+- Changing note-card content, truncation limits, or card geometry beyond what half-width rendering requires.
+
+### Deliverables
+
+- An explicit phone-portrait column count with a documented wide-screen crossover.
+- Note-card layout corrections required by half-width cards.
+- Updated documentation recording the deviation from the desktop masonry rule.
+- Emulator evidence across both orientations, font scales, and every note-list screen.
+
+### Verification
+
+- Toggle between grid and list in portrait and confirm the two layouts differ.
+- Measure the rendered column count and card geometry in portrait and in landscape.
+- Confirm a card carrying the maximum number of thumbnails stays within its card border.
+- Scroll past the initial render window in grid mode and confirm the list keeps growing.
+- Repeat the portrait checks at the largest system font scale.
+- Repeat on the notes, archive, trash, and search screens.
+- Run standard project checks.
+
+### Acceptance criteria
+
+- Grid mode renders two columns on a portrait phone; list mode renders one full-width column.
+- The column count increases, and never decreases, as available width grows.
+- No note-card content overflows its card or its column at any supported font scale.
+- Pinned/others grouping and the growing render window behave as before.
+- The deviation from the desktop's width-driven masonry is documented rather than silently introduced.
+
+### Coding-agent prompt
+
+> Implement milestone M15A only. Make the note list render two masonry columns in grid mode on a portrait phone by setting the column count explicitly, hand back to a width-derived count on wider screens at a crossover that never reduces the count, and correct any note-card content that overflows a half-width card. Verify on an emulator in both orientations, at the largest font scale, and on every screen sharing the note list. Do not change list mode, card content, or the desktop-derived visual design beyond the column count, and document the deviation from the desktop masonry rule.
+
+## 22. M16 — Signed APK release, upgrade verification, and final acceptance
 
 ### Goal
 
@@ -1262,9 +1325,9 @@ Produce a privately distributable signed Android APK and verify that the complet
 
 > Implement milestone M16 only. Prepare the privately sideloadable signed Android APK, configure secure release signing without committing secrets, validate fresh installs and upgrades, run complete desktop import/export interoperability tests, verify offline behavior and final acceptance criteria, and produce concise release documentation. Do not publish to Google Play or add cloud functionality.
 
-## 22. Cross-milestone quality gates
+## 23. Cross-milestone quality gates
 
-### 22.1. Desktop compatibility gate
+### 23.1. Desktop compatibility gate
 
 Before completing milestones that affect interoperability or visual identity:
 
@@ -1275,7 +1338,7 @@ Before completing milestones that affect interoperability or visual identity:
 - Test representative desktop-generated fixtures.
 - Document intentional Android-only deviations.
 
-### 22.2. Offline and privacy gate
+### 23.2. Offline and privacy gate
 
 Before completing each user-facing milestone:
 
@@ -1285,7 +1348,7 @@ Before completing each user-facing milestone:
 - Avoid logging note content or exported document contents.
 - Avoid unnecessary Android permissions.
 
-### 22.3. Data integrity gate
+### 23.3. Data integrity gate
 
 Before completing each persistence or import milestone:
 
@@ -1297,7 +1360,7 @@ Before completing each persistence or import milestone:
 - Avoid orphaned private image files.
 - Prove that failed imports do not overwrite unrelated data.
 
-### 22.4. Native Android gate
+### 23.4. Native Android gate
 
 Before completing each native integration milestone:
 
@@ -1307,7 +1370,7 @@ Before completing each native integration milestone:
 - Handle `content://` URIs correctly.
 - Avoid relying exclusively on browser-development behavior.
 
-### 22.5. User experience gate
+### 23.5. User experience gate
 
 Before completing each UI milestone:
 
@@ -1318,7 +1381,7 @@ Before completing each UI milestone:
 - Test both narrow and wider Android layouts.
 - Confirm errors and destructive actions are clearly communicated.
 
-## 23. Suggested fixture inventory
+## 24. Suggested fixture inventory
 
 Maintain a representative desktop-compatible fixture set containing:
 
@@ -1345,7 +1408,7 @@ Maintain a representative desktop-compatible fixture set containing:
 
 Fixtures must not contain real confidential user notes, personal images, private signing credentials, or other sensitive data.
 
-## 24. Suggested definition of done for each milestone
+## 25. Suggested definition of done for each milestone
 
 A milestone is complete only when:
 
@@ -1360,7 +1423,7 @@ A milestone is complete only when:
 9. Desktop compatibility deviations are documented.
 10. The implementation is ready for review as an independently understandable change.
 
-## 25. Final release acceptance checklist
+## 26. Final release acceptance checklist
 
 - [ ] Signed APK installs through private sideloading.
 - [ ] Existing installations upgrade without losing local data.

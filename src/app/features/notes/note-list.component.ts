@@ -33,7 +33,7 @@ import { NoteCardComponent } from './note-card.component';
  * each one running `marked` and DOMPurify over its own preview. Windowing here
  * fixes that once for all four pages. CDK virtual scroll was the alternative and
  * cannot be used: it needs uniform item heights and its own scroll viewport,
- * where this list is a `columns: 240px` masonry inside somebody else's
+ * where this list is a multi-column masonry inside somebody else's
  * `ion-content`. `ion-infinite-scroll` resolves its scroll host by walking up to
  * an ancestor `ion-content`, which this component does not own either.
  */
@@ -85,12 +85,28 @@ import { NoteCardComponent } from './note-card.component';
       padding: 12px 12px 72px;
     }
 
-    // The desktop's masonry (note-grid.scss): a fixed 240px column width lets the
-    // browser pick the count, which on a phone is one and on a wide screen two or
-    // more. No media query states a breakpoint because none is needed.
+    // The desktop's masonry (note-grid.scss), with the count forced rather than
+    // derived. The desktop's fixed 240px column width lets the browser divide the
+    // available space, which on a portrait phone -- the only form factor this app
+    // ships to -- comes out at one column, making grid mode indistinguishable from
+    // list mode and the toolbar toggle a no-op.
+    //
+    // column-count and not a smaller column-width: with both set the count is a
+    // *maximum*, so a width-driven rule would silently collapse back to one column
+    // on a 320px device.
     .notes--grid .notes__column {
-      columns: 240px;
+      column-count: 2;
       column-gap: 12px;
+    }
+
+    // Above the crossover the browser picks the count again. 720px is where the
+    // width-driven rule itself yields 2, so the count never dips as the viewport
+    // grows: 2 in portrait, 3 in landscape, more on a tablet. The columns
+    // shorthand resets column-count to auto, so nothing above needs unsetting.
+    @media (min-width: 720px) {
+      .notes--grid .notes__column {
+        columns: 240px;
+      }
     }
 
     .notes__heading {

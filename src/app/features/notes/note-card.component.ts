@@ -216,8 +216,12 @@ const CARD_IMAGE_LIMIT = 3;
       font-style: italic;
     }
 
+    // Wraps because a grid card is about half the viewport wide: three 56px
+    // thumbnails are wider than that, and a flex item with a specified width will
+    // not shrink below it, so an unwrapped row crosses the card border.
     .note-card__images {
       display: flex;
+      flex-wrap: wrap;
       gap: 4px;
       margin: 8px 0 0;
       padding: 0;

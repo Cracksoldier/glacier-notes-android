@@ -376,7 +376,7 @@ choice pending a compatibility check against Capacitor 8.
 ## 10. Fixture inventory
 
 Desktop can generate real `.glacier.json` fixtures via its export dialog, covering milestones
-doc §23. Status against the desktop contract:
+doc §24. Status against the desktop contract:
 
 | # | Fixture | Producible on desktop | Note |
 | --- | --- | --- | --- |

@@ -20,7 +20,7 @@ that keep a note from making a network request.
 | The `afterSanitizeAttributes` hook | `core/markdown/markdown.service.ts:20-29` |
 | 600-character *source* truncation for card previews | `core/markdown/markdown.service.ts:7,45-52` |
 | The 500 ms autosave debounce and its patch shape | `features/notes/note-editor-dialog.ts:31,373-376` |
-| Masonry: `columns: 240px; column-gap: 12px`, `break-inside: avoid` | `features/notes/note-grid.scss:5-8` |
+| Masonry: `column-gap: 12px`, `break-inside: avoid` (the column *count* has since diverged — see "The list page" below) | `features/notes/note-grid.scss:5-8` |
 | Card geometry, the pinned/others split, the empty-note line | `note-card.scss`, `note-grid.html:21-32` |
 
 `marked` and `dompurify` are pinned to the desktop's majors on purpose. A
@@ -128,9 +128,16 @@ debug builds run on real devices during development.
 
 `noteLayout` finally gets a reader. The toolbar toggle writes
 `SettingsStore.setNoteLayout()`; `grid` is the desktop masonry and `list` a
-single full-width column. The masonry needs no media query — a fixed 240px column
-width lets the browser pick the count, which is one on a phone and two or more in
-landscape.
+single full-width column.
+
+The masonry forces `column-count: 2` and only hands the count back to the browser
+above 720px, where a width-driven `columns: 240px` yields 2 of its own accord and
+then 3 in landscape. Ported straight, the desktop's width-driven rule renders
+*one* column on a portrait phone, which is the only form factor this app ships
+to: grid mode then looks exactly like list mode and the toggle appears broken.
+A smaller `column-width` does not fix that, because setting both properties makes
+the count a maximum rather than a target, so a narrow enough device collapses
+back to one column.
 
 Cards render pinned notes under a `grid.pinned` heading and the rest under
 `grid.others`, exactly as `note-grid.html` does. Nothing in M06 can *set*
