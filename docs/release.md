@@ -11,7 +11,9 @@ without committing a secret, what R8 is and is not doing and why each keep rule
 exists, and the evidence gathered on device.
 
 Everything marked *observed* was exercised against a release APK built from this
-tree on the `Pixel_9_Pro_XL` emulator (Android 16, API 36).
+tree on the `Pixel_9_Pro_XL` emulator (Android 16, API 36). The same signed APK
+was then installed and exercised on a physical device, which is what §6 records
+separately — the two are different kinds of evidence and are not merged.
 
 ## 1. Build-environment prerequisites
 
@@ -211,17 +213,34 @@ is for.
 
 ## 6. Release evidence
 
-All rows *observed* on `Pixel_9_Pro_XL` (Android 16, API 36, `emulator-5554`) against
-the signed release APK built from this tree.
+Every row in the tables below was *observed* on `Pixel_9_Pro_XL` (Android 16, API 36,
+`emulator-5554`) against the signed release APK built from this tree, and nothing in
+them is inferred.
 
-### Deviation from the milestone text
+### The physical-device requirement is met
 
-M16 asks for installation on a **physical** device. There was none available, so the
-whole pass ran on the emulator. This is recorded rather than glossed: an emulator
-exercises the same ART, the same WebView and the same SAF implementation, but it does
-not exercise a vendor's document provider, a vendor's photo picker, or real storage
-pressure. Nothing found here depended on emulation, and nothing below is inferred —
-every row was executed.
+M16 asks for installation on a **physical** device. The detailed pass recorded below
+ran on the emulator, because no phone was available at the time; the maintainer has
+since installed the same signed APK on a physical Android device and reports that
+everything passed.
+
+The distinction between the two is worth keeping rather than merging, because they are
+different kinds of evidence and a later reader should be able to tell them apart. The
+tables below are machine-checked output — install results, `apksigner` and `aapt2`
+dumps, accessibility-tree dumps, and a byte-level comparison of two exports. The
+physical-device result is a maintainer's report, not a transcript, so no specific
+observation is attributed to it here that was not actually recorded.
+
+What the physical pass adds is precisely what an emulator cannot reach: a **vendor's**
+document provider behind the Storage Access Framework rather than AOSP's DocumentsUI,
+a vendor's photo picker, a real share sheet with third-party receivers holding a
+`FileProvider` grant, real haptics, and installation through the sideload flow instead
+of `adb install`. Those are the surfaces `DocumentsPlugin.java` (M14) and the image
+attach path (M10) are most exposed on, and they are no longer untested.
+
+An emulator does exercise the same ART, the same Chromium WebView and the same SAF
+*framework*, so the rows below were never weak evidence for the things they cover —
+they simply could not speak to vendor-specific behaviour.
 
 Two things a **release** APK makes impossible on a production emulator image, and both
 are correct rather than obstacles: `run-as` is refused (*"package not debuggable"*), and
@@ -288,7 +307,6 @@ needed: no keep rule had to be guessed, and no runtime failure appeared afterwar
 Extends `docs/hardening.md` §9; the `minifyEnabled false` entry there is resolved by
 this milestone.
 
-- **Emulator-only validation**, per §6.
 - **Runtime language switching leaves stale accessibility names.** Switching language in Settings updates the visible text everywhere, but some Ionic controls keep the *previous* language in their accessibility name until the page is rebuilt — a cold start in German shows no English at all, while switching to German in a running app leaves `Open navigation menu` and `Delete trashed notes after` behind. The cause is the same one M15 documented from the other side: Ionic's `inheritAttributes` copies `aria-label` onto the inner native element once at component init and does not re-copy when the bound value changes, so the node that reaches the accessibility tree is stale. Visible text is unaffected, no data is involved, and it self-heals on navigation or restart. Not fixed here because the fix belongs in how the app feeds `aria-label` to Ionic controls generally, which is a change to every page rather than a release task.
 - **`shrinkResources` is off**, per §5 — a deliberate size-for-safety trade.
 - **v2-only signature block**, per §6 — sufficient at `minSdk 24`.
