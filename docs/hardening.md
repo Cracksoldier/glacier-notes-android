@@ -350,11 +350,12 @@ demonstrates, which is the whole point of it.
 
 Knowingly accepted, not overlooked.
 
-- **`minifyEnabled false`** (`android/app/build.gradle:21`). The release build ships
-  unobfuscated, so class and method names are readable in the APK. Deferred to M16
-  along with signing; enabling R8 needs its own verification pass because Capacitor
-  plugins are reflected into. Nothing about the app's security depends on
-  obfuscation — there is no secret in the binary.
+- ~~**`minifyEnabled false`**~~ — **resolved by M16.** R8 is now on for the release
+  build and the verification pass this entry asked for was done; see
+  `docs/release.md` §5 for the keep rules and §6 for what was exercised on device.
+  The prediction here was right in an unexpected place: the build did fail on first
+  run, but not on a Capacitor plugin — on annotations reached through the unused
+  `security-crypto` graph named in the next bullet.
 - **The unused `sqlcipher-android:4.17.0` AAR**
   (`node_modules/@capacitor-community/sqlite/android/build.gradle:64`). It is linked
   into the APK although v1 refuses SQLCipher, costing binary size and carrying native

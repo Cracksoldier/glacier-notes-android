@@ -1,5 +1,19 @@
 apply plugin: 'com.android.application'
 
+// Release signing material never enters this repository. `android/keystore.properties`
+// is gitignored and names the keystore, its alias and the two passwords; the keystore
+// itself lives outside the working tree entirely. See docs/release.md.
+//
+// When the file is absent — a fresh clone, or a machine that only builds debug —
+// configuration must still succeed, so the release build type is simply left unsigned
+// rather than failing the build here.
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def hasReleaseSigning = keystorePropertiesFile.exists()
+def keystoreProperties = new Properties()
+if (hasReleaseSigning) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
 android {
     namespace = "com.glacier.notes"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +21,11 @@ android {
         applicationId "com.glacier.notes"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        // versionCode is a plain monotonic integer, bumped for every artefact that
+        // reaches a device and never reused; versionName is the semver string the
+        // Settings > About row shows via App.getInfo(). docs/release.md holds the scheme.
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,9 +33,26 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
-            minifyEnabled false
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+            // R8. shrinkResources is deliberately left off: it shrinks Android
+            // resources only and never assets/public, where the whole web bundle
+            // lives, so it would gain little while adding a failure mode that only
+            // appears at runtime. docs/release.md records the keep rules.
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
