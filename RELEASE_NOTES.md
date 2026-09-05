@@ -65,3 +65,26 @@ from, then open the APK. To upgrade later, install the new APK over the old one 
 your notes are kept. An APK signed with a different key will be refused rather
 than replacing your installation; this is Android protecting your data, not a
 fault.
+
+### Verifying the download
+
+Every build is signed with the same key. Its certificate fingerprint is:
+
+```
+SHA-256  465466d1d25a16a43d3bada1ebdb20bb125d76704230ce7af285b3d50fb44440
+```
+
+Check a downloaded APK against it with `apksigner` from the Android SDK build-tools:
+
+```
+apksigner verify --print-certs glacier-notes-1.0.0.apk
+```
+
+The `Signer #1 certificate SHA-256 digest` it prints must match the line above
+exactly. If it does not, the file is not the one published here — do not install it.
+
+This is worth doing once for a sideloaded app, because sideloading is the one
+install path with no store checking the publisher for you. It is also the value to
+compare when you have two APKs and want to know whether the newer one can upgrade
+the older: matching fingerprints mean it can, and differing ones mean Android will
+refuse.
