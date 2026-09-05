@@ -41,8 +41,15 @@ Gradle needs `sdk.dir`. The file is gitignored (`.gitignore:76`) precisely becau
 it is machine-specific, so a fresh clone does not have one:
 
 ```properties
-sdk.dir=C\:\\Users\\Andreas\\AppData\\Local\\Android\\Sdk
+sdk.dir=C\:\\Users\\<your-user>\\AppData\\Local\\Android\\Sdk
 ```
+
+Two things about that value, both of which produce an unhelpful error when got
+wrong: a Java properties file does **not** expand environment variables, so
+`%USERPROFILE%` or `$HOME` stays a literal string and the SDK is reported missing;
+and the backslashes and the colon must be escaped exactly as above, because `\` is
+the properties-format escape character. A forward-slash path avoids both problems
+if you prefer it.
 
 ### Node must satisfy the Angular CLI's floor
 
@@ -128,11 +135,17 @@ password.
 `android/keystore.properties` — gitignored at `.gitignore:82`, never committed:
 
 ```properties
-storeFile=C:/Users/Andreas/.android-keystores/glacier-notes-release.jks
+storeFile=C:/Users/<your-user>/.android-keystores/glacier-notes-release.jks
 storePassword=...
 keyAlias=glacier-notes
 keyPassword=...
 ```
+
+`storeFile` is read by the same properties parser as `sdk.dir`, so the same two
+rules apply: no environment-variable expansion, and forward slashes are the
+simplest way to write a Windows path here. A relative path would be resolved
+against `android/app/`, which is inside the working tree — use an absolute one, so
+that a mistyped path fails loudly instead of quietly pointing somewhere committable.
 
 `android/app/build.gradle` reads it **only if it exists**, and applies
 `signingConfig` to the release build type only in that case. This is deliberate: a
