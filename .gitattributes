@@ -1,0 +1,24 @@
+# Line-ending policy: the repository stores LF, and every checkout gets LF.
+#
+# Without this file, a clone made with the Windows default core.autocrlf=true
+# checks out CRLF while git stores LF. Nothing looks wrong — until someone edits
+# a file git was not already tracking as modified, at which point the *whole*
+# file shows as changed because every line ending differs. `docs/hardening.md`
+# did exactly that during M16: an eleven-line edit produced a 749-line diff.
+#
+# It also breaks a project command outright. biome.json sets "lineEnding": "lf",
+# so a CRLF working tree fails `npm run format:check` on every file at once while
+# `git diff` stays empty — a mismatch with no visible cause. docs/release.md §1
+# records the per-clone workaround; this file removes the need for it.
+* text=auto eol=lf
+
+# Binary. These must never be touched: the 0x0D bytes in them are data, and
+# rewriting one as a line ending corrupts the file with no error anywhere.
+*.png binary
+*.jar binary
+
+# The one file that must keep CRLF: cmd.exe is the consumer, not a POSIX shell.
+# Its counterpart `android/gradlew` is a shell script and takes LF from the rule
+# above — it was checked in with CRLF, which is a latent failure on any Unix
+# machine, since /bin/sh rejects a shebang line ending in a carriage return.
+*.bat text eol=crlf
